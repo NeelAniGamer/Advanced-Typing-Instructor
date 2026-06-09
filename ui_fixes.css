@@ -1,0 +1,254 @@
+/* ═══════════════════════════════════════════════════════════
+   ui_fixes.css
+   Add after style.css:  <link rel="stylesheet" href="ui_fixes.css">
+   Fixes: natural fonts · purple default theme · detached
+          full-width keyboard · clean typing box
+═══════════════════════════════════════════════════════════ */
+
+/* ── 1. NATURAL FONTS ──────────────────────────────────────
+   Replace Orbitron/Rajdhani with clean system fonts.
+   Headings → Inter semibold. Body → system-ui stack.
+   Code → Consolas / monospace stack (no web font needed).    */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --font-main: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-head: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-code: 'Consolas', 'Cascadia Code', 'Fira Mono', monospace;
+}
+
+/* Kill the heavy letter-spacing on Orbitron-only classes */
+.mega-title   { letter-spacing: -0.01em !important; font-weight: 800 !important; }
+.dynamic-title{ letter-spacing: -0.01em !important; font-weight: 700 !important; }
+h1, h2, h3   { letter-spacing: -0.01em !important; }
+
+/* Admin panel code-style labels — keep monospace but normal size */
+.admin-title, .admin-tab, .admin-input,
+.admin-log .log-line, .pin-key,
+.acc-section-label, .quest-section-label {
+    font-family: var(--font-code) !important;
+    letter-spacing: 0.04em !important;
+}
+
+/* Rank/map nodes — regular weight, no heavy tracking */
+.map-node { font-family: var(--font-main) !important; font-weight: 600 !important; letter-spacing: 0 !important; }
+
+/* Level display and header rank */
+#current-rank, #progress-current-rank, #progress-next-rank,
+#big-rank-text, .rank-btn { font-family: var(--font-main) !important; font-weight: 700 !important; letter-spacing: 0 !important; }
+
+/* ── 2. PURPLE DEFAULT THEME ───────────────────────────────
+   Overrides the cyan :root variables.
+   Coding mode (theme-red) is untouched.                      */
+:root {
+    --bg-1:              #0e0b1a;
+    --bg-2:              #09071a;
+    --primary:           #b388ff;
+    --primary-hover:     #e0c8ff;
+    --primary-dim:       rgba(179,136,255,0.14);
+    --card-border:       rgba(179,136,255,0.22);
+    --card-border-hover: rgba(179,136,255,0.55);
+    --card-shadow:       rgba(179,136,255,0.35);
+    --text-shadow:       rgba(179,136,255,0.65);
+    --kb-bg:             #09071a;
+    --kb-border:         #1e1535;
+    --key-bg:            #130f22;
+    --key-border:        #080614;
+    --prog-grad-1:       #b388ff;
+    --prog-grad-2:       #f48fb1;
+    --orb1:              rgba(179,136,255,0.07);
+    --orb2:              rgba(244,143,177,0.04);
+    --grid-color:        rgba(179,136,255,0.04);
+}
+
+/* Landing title glow in purple */
+.mega-title {
+    color: var(--primary) !important;
+    text-shadow: 0 0 40px rgba(179,136,255,0.4), 0 0 80px rgba(179,136,255,0.15) !important;
+}
+
+/* Landing badge */
+.landing-badge {
+    background: rgba(179,136,255,0.1) !important;
+    border-color: rgba(179,136,255,0.25) !important;
+    color: var(--primary) !important;
+}
+
+/* Massive button purple */
+.massive-btn {
+    background: var(--primary) !important;
+    box-shadow: 0 0 30px rgba(179,136,255,0.4), 0 4px 15px rgba(0,0,0,0.4) !important;
+}
+.massive-btn:hover {
+    background: #ce9cff !important;
+    box-shadow: 0 0 50px rgba(179,136,255,0.55), 0 8px 25px rgba(0,0,0,0.5) !important;
+}
+
+/* Body background gradient: deep purple-black */
+body::after {
+    background:
+        radial-gradient(ellipse 55% 45% at 20% 30%, rgba(103,58,183,0.12), transparent),
+        radial-gradient(ellipse 40% 55% at 80% 70%, rgba(179,136,255,0.07), transparent),
+        radial-gradient(ellipse 50% 35% at 50% 5%,  rgba(103,58,183,0.1), transparent) !important;
+}
+
+/* ── 3. TYPING BOX — clean, old-style ──────────────────────
+   Remove backdrop-filter and keep it simple like the
+   original: plain dark background, single border, no blur.   */
+.typing-text-container,
+#game-typing-box {
+    background:      rgba(12, 8, 25, 0.95)  !important;
+    border:          2px solid rgba(179,136,255,0.25) !important;
+    border-radius:   8px !important;
+    padding:         22px 24px !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow:      none !important;
+    transition:      border-color 0.3s !important;
+}
+.typing-text-container:focus-within,
+#game-typing-box:focus-within {
+    border-color: rgba(179,136,255,0.5) !important;
+}
+
+/* Typing text — plain, readable, no extra weight */
+.typing-text {
+    font-family: var(--font-main) !important;
+    font-size:   clamp(1.25rem, 2.2vw, 1.75rem) !important;
+    font-weight: 400 !important;
+    line-height: 2.6rem !important;
+    color:       rgba(210, 200, 230, 0.65) !important;
+    letter-spacing: 0.01em !important;
+}
+.code-mode-active .typing-text {
+    font-family: var(--font-code) !important;
+    font-size:   clamp(0.92rem, 1.7vw, 1.25rem) !important;
+    line-height: 2rem !important;
+    color:       rgba(200,210,255,0.6) !important;
+}
+
+/* Character states */
+.typing-text .active {
+    color:       var(--primary) !important;
+    background:  rgba(179,136,255,0.12) !important;
+    border-bottom: 2px solid var(--primary) !important;
+    border-radius: 2px !important;
+}
+.typing-text .correct   { color: #a5d6a7 !important; }
+.typing-text .incorrect { color: #ef9a9a !important; background: rgba(239,154,154,0.12) !important; border-radius: 2px !important; }
+
+/* ── 4. KEYBOARD DETACHED — full screen width ──────────────
+   The keyboard sits OUTSIDE and BELOW the game card,
+   spanning the full viewport width as a fixed footer bar.    */
+#virtual-keyboard {
+    position:   fixed !important;
+    bottom:     0 !important;
+    left:       0 !important;
+    right:      0 !important;
+    width:      100vw !important;
+    margin:     0 !important;
+    z-index:    500 !important;
+    border-radius: 0 !important;
+    border-left:   none !important;
+    border-right:  none !important;
+    border-bottom: none !important;
+    border-top:    1px solid rgba(179,136,255,0.12) !important;
+    background: rgba(9, 7, 26, 0.97) !important;
+    backdrop-filter: blur(16px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+    padding: 10px 0 14px !important;
+    box-shadow: 0 -4px 30px rgba(0,0,0,0.6) !important;
+    gap: 6px !important;
+}
+
+/* Give the game screen enough bottom padding so the
+   typing box is never hidden behind the keyboard bar       */
+#game-screen {
+    padding-bottom: 170px !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+}
+
+/* Slightly larger keys since we have more horizontal space */
+.key {
+    width:  38px !important;
+    height: 38px !important;
+    font-size: 0.78rem !important;
+    font-family: var(--font-main) !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+}
+.key.spacebar { width: 220px !important; }
+
+/* Finger-zone key colours — harmonise with purple */
+.zone-pinky-l  { background: rgba(74,20,140,0.45) !important; border: 1px solid rgba(156,39,176,0.35) !important; color: #e1bee7 !important; }
+.zone-ring-l   { background: rgba(25,50,140,0.45) !important; border: 1px solid rgba(63,81,181,0.35) !important;  color: #c5cae9 !important; }
+.zone-middle-l { background: rgba(0,70,60,0.45)   !important; border: 1px solid rgba(0,137,123,0.35) !important;  color: #b2dfdb !important; }
+.zone-index    { background: rgba(80,60,20,0.45)   !important; border: 1px solid rgba(161,136,127,0.35) !important; color: #d7ccc8 !important; }
+.zone-middle-r { background: rgba(130,50,0,0.45)   !important; border: 1px solid rgba(230,81,0,0.35) !important;   color: #ffccbc !important; }
+.zone-ring-r   { background: rgba(120,20,20,0.45)  !important; border: 1px solid rgba(198,40,40,0.35) !important;  color: #ffcdd2 !important; }
+.zone-pinky-r  { background: rgba(100,0,60,0.45)   !important; border: 1px solid rgba(173,20,87,0.35) !important;  color: #f8bbd0 !important; }
+
+/* ── 5. GLASS CARDS — lighter, not boxy ───────────────────  */
+.glass-card {
+    border-radius:   14px !important;
+    background:      rgba(14, 10, 28, 0.78) !important;
+    backdrop-filter: blur(18px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+    border:          1px solid rgba(179,136,255,0.14) !important;
+}
+
+/* ── 6. PROGRESS BARS & BUTTONS ───────────────────────────  */
+.dynamic-progress-fill {
+    background: linear-gradient(90deg, #b388ff, #f48fb1) !important;
+    box-shadow: 0 0 10px rgba(179,136,255,0.4) !important;
+}
+.page-btn, .compact-shop-icon {
+    font-family: var(--font-main) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+}
+
+/* ── 7. QUEST & SHOP TEXT ──────────────────────────────────  */
+.quest-item h3,
+.shop-item h3,
+.shop-item p,
+.stat-text,
+.header-info,
+.rank-btn {
+    font-family: var(--font-main) !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+}
+
+/* ── 8. STAT NUMBERS — clear and readable ─────────────────  */
+#final-wpm, #final-accuracy, .bright-stat {
+    font-family: var(--font-main) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+}
+
+/* ── 9. MISC CLEANUP ───────────────────────────────────────  */
+/* Reduce over-capitalization in random labels */
+.quest-section-label,
+.mp-panel-title,
+.acc-section-label {
+    text-transform: uppercase !important;
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.08em !important;
+    color: rgba(255,255,255,0.28) !important;
+}
+
+/* On-fire glow purple */
+.on-fire {
+    box-shadow: 0 0 20px rgba(179,136,255,0.6),
+                inset 0 0 20px rgba(179,136,255,0.15) !important;
+    border-color: #b388ff !important;
+}
+
+/* Active char cursor in purple */
+.active {
+    border-bottom-color: #b388ff !important;
+    color: #d4b8ff !important;
+}

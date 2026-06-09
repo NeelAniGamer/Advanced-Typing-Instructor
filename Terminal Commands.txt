@@ -1,0 +1,5 @@
+Terminal Commands
+1. pip install pywebview
+2. python main.py
+3. pip install pyinstaller
+4. pyinstaller --noconsole --onefile --icon="game_icon.ico" --add-data "index.html;." --add-data "style.css;." --add-data "script.js;."--add-data "achievements.js;."--add-data "firebase_config.js;."--add-data "firebase_mp.js;."--add-data "google_auth.js;."--add-data "patches.js;." --add-data "emerald.png;." --add-data "download.png;." main.py
