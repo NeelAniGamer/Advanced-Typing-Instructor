@@ -1,0 +1,16 @@
+{
+    "name": "Advanced Typing Instructor",
+    "short_name": "Typing Instructor",
+    "description": "A full-featured, offline-capable typing tutor and game.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0d0d1a",
+    "theme_color": "#00f5ff",
+    "icons": [
+        {
+            "src": "game_icon.ico",
+            "sizes": "256x256",
+            "type": "image/x-icon"
+        }
+    ]
+}

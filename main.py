@@ -4,7 +4,7 @@ Advanced Typing Instructor — Native Desktop App v2.5
 Run:   python main.py
 Build: see build.bat / build.sh
 
-Requires:  pip install pywebview websockets requests
+Requires:  pip install pywebview requests
 Optional:  pip install pyinstaller
 """
 
@@ -30,13 +30,7 @@ except ImportError:
     print("=" * 60); print("  ERROR: pywebview not installed.  pip install pywebview"); print("=" * 60)
     input("Press Enter to exit..."); sys.exit(1)
 
-try:
-    import websockets
-    from websockets.server import serve as ws_serve
-    HAS_WEBSOCKETS = True
-except ImportError:
-    HAS_WEBSOCKETS = False
-    print("[WS] websockets not installed — multiplayer disabled. pip install websockets")
+HAS_WEBSOCKETS = True
 
 # ── Ports ─────────────────────────────────────────────────────
 def _free_port():
@@ -44,8 +38,87 @@ def _free_port():
         s.bind(('', 0)); return s.getsockname()[1]
 
 HTTP_PORT = _free_port()
-WS_PORT   = _free_port()
-OAUTH_CALLBACK_PORT = _free_port()   # picks a free random port at launch
+LAN_WS_PORT = _free_port()
+OAUTH_CALLBACK_PORT = _free_port()
+
+# ── LAN MULTIPLAYER ──────────────────────────────────────────
+import websockets
+
+lan_rooms = {} 
+lan_state = {} 
+
+async def lan_ws_handler(websocket):
+    room_code = None
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+            action = data.get('action')
+            
+            if action == 'create_room':
+                room_code = str(random.randint(1000, 9999))
+                lan_rooms[room_code] = [websocket]
+                lan_state[room_code] = {'host': data.get('uid'), 'players': {data.get('uid'): data.get('profile')}, 'status': 'waiting'}
+                await websocket.send(json.dumps({'type': 'room_created', 'room': room_code}))
+            
+            elif action == 'join_room':
+                room_code = data.get('room')
+                if room_code in lan_rooms:
+                    lan_rooms[room_code].append(websocket)
+                    lan_state[room_code]['players'][data.get('uid')] = data.get('profile')
+                    await websocket.send(json.dumps({'type': 'joined', 'room': room_code}))
+                    for ws in lan_rooms[room_code]:
+                        await ws.send(json.dumps({'type': 'state_update', 'state': lan_state[room_code]}))
+                else:
+                    await websocket.send(json.dumps({'type': 'error', 'msg': 'Room not found'}))
+            
+            elif action == 'update_progress':
+                if room_code in lan_rooms:
+                    uid = data.get('uid')
+                    if uid in lan_state[room_code]['players']:
+                        lan_state[room_code]['players'][uid]['progress'] = data.get('progress')
+                    for ws in lan_rooms[room_code]:
+                        await ws.send(json.dumps({'type': 'state_update', 'state': lan_state[room_code]}))
+            
+            elif action == 'start_race':
+                if room_code in lan_rooms:
+                    lan_state[room_code]['status'] = 'playing'
+                    lan_state[room_code]['text'] = data.get('text')
+                    for ws in lan_rooms[room_code]:
+                        await ws.send(json.dumps({'type': 'race_started', 'text': data.get('text')}))
+    except:
+        pass
+    finally:
+        if room_code in lan_rooms and websocket in lan_rooms[room_code]:
+            lan_rooms[room_code].remove(websocket)
+            if len(lan_rooms[room_code]) == 0:
+                del lan_rooms[room_code]
+                del lan_state[room_code]
+
+async def lan_ws_server():
+    async with websockets.serve(lan_ws_handler, "0.0.0.0", LAN_WS_PORT):
+        await asyncio.Future()
+
+def run_lan_ws():
+    asyncio.run(lan_ws_server())
+
+threading.Thread(target=run_lan_ws, daemon=True).start()
+
+# UDP Discovery
+UDP_PORT = 19999
+def udp_discovery_listener():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('', UDP_PORT))
+        while True:
+            data, addr = s.recvfrom(1024)
+            if data.decode() == 'DISCOVER_TYPING_SERVER':
+                response = f'TYPING_SERVER:{HTTP_PORT}:{LAN_WS_PORT}'
+                s.sendto(response.encode(), addr)
+    except Exception as e:
+        print("UDP Discovery Error:", e)
+
+threading.Thread(target=udp_discovery_listener, daemon=True).start()
 
 # ── REPLACE WITH YOUR REAL OAUTH VALUES ──────────────────────
 # Get them at https://console.cloud.google.com/apis/credentials
@@ -63,240 +136,6 @@ def data_path(*parts):
     return os.path.join(base, *parts)
 
 DB_PATH = data_path('typing_quest.db')
-
-# ═══════════════════════════════════════════════════════════════
-# MULTIPLAYER ROOM MANAGER
-# ═══════════════════════════════════════════════════════════════
-class RoomManager:
-    def __init__(self):
-        self.rooms   = {}   # code -> Room dict
-        self.clients = {}   # ws -> {room_code, player_id, name}
-        self._lock   = asyncio.Lock()
-
-    def _gen_code(self):
-        return ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=5))
-
-    def _get_local_ip(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close(); return ip
-        except: return "127.0.0.1"
-
-    async def handle(self, ws):
-        player_id = str(uuid.uuid4())[:8]
-        self.clients[ws] = {'room_code': None, 'player_id': player_id, 'name': 'Player'}
-        try:
-            async for raw in ws:
-                try:
-                    msg = json.loads(raw)
-                    await self.dispatch(ws, player_id, msg)
-                except Exception as e:
-                    await self._send(ws, {'type': 'error', 'msg': str(e)})
-        except Exception:
-            pass
-        finally:
-            await self.on_disconnect(ws, player_id)
-
-    async def dispatch(self, ws, pid, msg):
-        t = msg.get('type', '')
-        if   t == 'create_room':  await self.create_room(ws, pid, msg)
-        elif t == 'join_room':    await self.join_room(ws, pid, msg)
-        elif t == 'leave_room':   await self.leave_room(ws, pid)
-        elif t == 'start_race':   await self.start_race(ws, pid)
-        elif t == 'progress':     await self.update_progress(ws, pid, msg)
-        elif t == 'finish':       await self.player_finish(ws, pid, msg)
-        elif t == 'chat':         await self.broadcast_chat(ws, pid, msg)
-        elif t == 'ready':        await self.set_ready(ws, pid, msg)
-        elif t == 'ping':         await self._send(ws, {'type':'pong','ts':time.time()})
-        elif t == 'list_rooms':   await self._send(ws, {'type':'rooms_list','rooms': self._public_rooms()})
-        elif t == 'admin_kick':   await self.admin_kick(ws, pid, msg)
-        elif t == 'set_name':
-            self.clients[ws]['name'] = msg.get('name','Player')[:20]
-            room = self._player_room(pid)
-            if room: room['players'][pid]['name'] = self.clients[ws]['name']; await self.broadcast_state(room)
-
-    # ── Room creation ──────────────────────────────────────────
-    async def create_room(self, ws, pid, msg):
-        async with self._lock:
-            code = self._gen_code()
-            name = self.clients[ws]['name'] = msg.get('name','Host')[:20]
-            text = msg.get('text', "The quick brown fox jumps over the lazy dog.")
-            mode = msg.get('mode', 'race')
-            self.rooms[code] = {
-                'code': code, 'host': pid, 'mode': mode,
-                'text': text, 'started': False, 'finished': False,
-                'max_players': int(msg.get('max_players', 8)),
-                'is_public': bool(msg.get('is_public', True)),
-                'created_at': time.time(), 'finish_order': [],
-                'players': {
-                    pid: {'id':pid,'name':name,'progress':0,'wpm':0,'ready':False,'finished':False,'rank':0,'ws':ws}
-                }
-            }
-            self.clients[ws]['room_code'] = code
-        local_ip = self._get_local_ip()
-        await self._send(ws, {'type':'room_created','code':code,'host_ip':local_ip,'ws_port':WS_PORT,'text':text,'mode':mode})
-
-    # ── Join room ──────────────────────────────────────────────
-    async def join_room(self, ws, pid, msg):
-        code = msg.get('code','').upper().strip()
-        name = self.clients[ws]['name'] = msg.get('name','Player')[:20]
-        async with self._lock:
-            if code not in self.rooms:
-                await self._send(ws, {'type':'error','msg':'Room not found.'}); return
-            room = self.rooms[code]
-            if room['started']:
-                await self._send(ws, {'type':'error','msg':'Race already in progress.'}); return
-            if len(room['players']) >= room['max_players']:
-                await self._send(ws, {'type':'error','msg':'Room is full.'}); return
-            room['players'][pid] = {'id':pid,'name':name,'progress':0,'wpm':0,'ready':False,'finished':False,'rank':0,'ws':ws}
-            self.clients[ws]['room_code'] = code
-        await self._send(ws, {'type':'room_joined','code':code,'text':room['text'],'mode':room['mode'],'host':room['host']})
-        await self.broadcast_state(room)
-
-    # ── Leave / disconnect ──────────────────────────────────────
-    async def leave_room(self, ws, pid):
-        room = self._player_room(pid)
-        if not room: return
-        async with self._lock:
-            room['players'].pop(pid, None)
-            if self.clients[ws]: self.clients[ws]['room_code'] = None
-            if not room['players']:
-                self.rooms.pop(room['code'], None); return
-            if room['host'] == pid and room['players']:
-                room['host'] = next(iter(room['players']))
-                new_host_ws = room['players'][room['host']]['ws']
-                await self._send(new_host_ws, {'type':'promoted_to_host'})
-        await self.broadcast_state(room)
-
-    async def on_disconnect(self, ws, pid):
-        await self.leave_room(ws, pid)
-        self.clients.pop(ws, None)
-
-    # ── Ready / Start ──────────────────────────────────────────
-    async def set_ready(self, ws, pid, msg):
-        room = self._player_room(pid)
-        if not room: return
-        room['players'][pid]['ready'] = msg.get('ready', True)
-        await self.broadcast_state(room)
-        # Auto-start if all ready and >= 2 players
-        all_ready = all(p['ready'] for p in room['players'].values())
-        if all_ready and len(room['players']) >= 2:
-            await self.start_race(ws, pid)
-
-    async def start_race(self, ws, pid):
-        room = self._player_room(pid)
-        if not room: return
-        if room['host'] != pid:
-            await self._send(ws, {'type':'error','msg':'Only the host can start.'}); return
-        if len(room['players']) < 1:
-            await self._send(ws, {'type':'error','msg':'Need at least 1 player.'}); return
-        room['started'] = True; room['start_time'] = time.time()
-        # 3-second countdown broadcast
-        for i in [3,2,1]:
-            await self.broadcast_to_room(room, {'type':'countdown','count':i})
-            await asyncio.sleep(1)
-        await self.broadcast_to_room(room, {'type':'race_start','text':room['text'],'start_time':time.time()})
-
-    # ── Progress / Finish ──────────────────────────────────────
-    async def update_progress(self, ws, pid, msg):
-        room = self._player_room(pid)
-        if not room or not room['started']: return
-        if pid in room['players']:
-            room['players'][pid]['progress'] = msg.get('progress', 0)
-            room['players'][pid]['wpm']      = msg.get('wpm', 0)
-        await self.broadcast_to_room(room, {
-            'type': 'progress_update',
-            'players': {p['id']: {'name':p['name'],'progress':p['progress'],'wpm':p['wpm'],'finished':p['finished']} for p in room['players'].values()}
-        })
-
-    async def player_finish(self, ws, pid, msg):
-        room = self._player_room(pid)
-        if not room: return
-        if pid in room['players'] and not room['players'][pid]['finished']:
-            room['players'][pid]['finished'] = True
-            rank = len(room['finish_order']) + 1
-            room['players'][pid]['rank'] = rank
-            room['finish_order'].append(pid)
-            elapsed = time.time() - room.get('start_time', time.time())
-            wpm = msg.get('wpm', 0)
-            await self.broadcast_to_room(room, {
-                'type':   'player_finished',
-                'id':     pid, 'name': room['players'][pid]['name'],
-                'rank':   rank, 'wpm': wpm, 'time': round(elapsed, 2)
-            })
-            all_done = all(p['finished'] for p in room['players'].values())
-            if all_done:
-                await asyncio.sleep(3)
-                podium = [{'id':p['id'],'name':p['name'],'rank':p['rank'],'wpm':p['wpm']} for p in sorted(room['players'].values(), key=lambda x: x['rank'])]
-                await self.broadcast_to_room(room, {'type':'race_over','podium':podium})
-                room['started'] = False; room['finished'] = True
-                for p in room['players'].values():
-                    p['progress'] = 0; p['finished'] = False; p['rank'] = 0; p['ready'] = False
-                room['finish_order'] = []
-
-    # ── Chat ──────────────────────────────────────────────────
-    async def broadcast_chat(self, ws, pid, msg):
-        room = self._player_room(pid)
-        if not room: return
-        name = self.clients[ws].get('name','?')
-        text = msg.get('text','')[:200]
-        await self.broadcast_to_room(room, {'type':'chat','sender':name,'text':text,'ts':time.time()})
-
-    # ── Admin kick ────────────────────────────────────────────
-    async def admin_kick(self, ws, pid, msg):
-        room = self._player_room(pid)
-        if not room or room['host'] != pid: return
-        target = msg.get('target_id')
-        if target and target in room['players']:
-            target_ws = room['players'][target]['ws']
-            await self._send(target_ws, {'type':'kicked','msg':'You were removed by the host.'})
-            await self.leave_room(target_ws, target)
-
-    # ── Helpers ───────────────────────────────────────────────
-    async def broadcast_state(self, room):
-        await self.broadcast_to_room(room, {
-            'type': 'room_state',
-            'players': {p['id']: {'name':p['name'],'ready':p['ready'],'wpm':p['wpm']} for p in room['players'].values()},
-            'host': room['host'],
-            'started': room['started'],
-            'player_count': len(room['players'])
-        })
-
-    async def broadcast_to_room(self, room, payload):
-        dead = []
-        for p in list(room['players'].values()):
-            try: await self._send(p['ws'], payload)
-            except: dead.append(p['id'])
-        for d in dead: room['players'].pop(d, None)
-
-    async def _send(self, ws, payload):
-        try: await ws.send(json.dumps(payload))
-        except: pass
-
-    def _player_room(self, pid):
-        for room in self.rooms.values():
-            if pid in room['players']: return room
-        return None
-
-    def _public_rooms(self):
-        return [{'code':r['code'],'players':len(r['players']),'max':r['max_players'],'started':r['started'],'mode':r['mode']} for r in self.rooms.values() if r.get('is_public') and not r['finished']]
-
-
-ROOM_MANAGER = RoomManager()
-
-async def ws_main():
-    if not HAS_WEBSOCKETS: return
-    async with ws_serve(ROOM_MANAGER.handle, "0.0.0.0", WS_PORT):
-        print(f"[WebSocket] Multiplayer on port {WS_PORT}")
-        await asyncio.Future()  # run forever
-
-def run_ws_server():
-    if not HAS_WEBSOCKETS: return
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try: loop.run_until_complete(ws_main())
-    except Exception as e: print(f"[WS Error] {e}")
-
 
 # ═══════════════════════════════════════════════════════════════
 # TYPING GAME API
@@ -748,7 +587,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path=='/api/savequests':       API.savequestdata(p.get('category',['Literature'])[0],p.get('data',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
         elif path=='/api/getprogress':      self._send(200,'text/plain',API.getprogress().encode())
         elif path=='/api/saveprogress':     API.saveprogress(p.get('data',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
-        elif path=='/api/ws_port':          self._send(200,'application/json',json.dumps({'port':WS_PORT,'available':HAS_WEBSOCKETS}).encode())
+        
         elif path=='/api/daily':            self._send(200,'application/json',API.get_daily_challenge().encode())
         elif path=='/api/announcements':    self._send(200,'application/json',API.get_announcements().encode())
         elif path=='/api/post_announcement':API.post_announcement(p.get('msg',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
@@ -760,9 +599,40 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("8.8.8.8",80)); ip=s.getsockname()[0]; s.close()
             except: ip="127.0.0.1"
-            self._send(200,'application/json',json.dumps({'ip':ip,'ws_port':WS_PORT}).encode())
+            self._send(200,'application/json',json.dumps({'ip':ip}).encode())
             
         # ── OAUTH ROUTES ───────────────────────────────────────────
+        elif path == '/api/lan_discover':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'ws_port': LAN_WS_PORT}).encode())
+        elif path == '/api/admin/add_quest':
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length:
+                body = self.rfile.read(content_length)
+                quest_data = json.loads(body)
+                cat = quest_data.get('category', 'daily')
+                
+                conn = sqlite3.connect(DB_PATH)
+                c = conn.cursor()
+                c.execute("SELECT quest_json FROM quests WHERE category=?", (cat,))
+                row = c.fetchone()
+                
+                quests_arr = []
+                if row and row[0]:
+                    try:
+                        quests_arr = json.loads(row[0])
+                    except: pass
+                
+                quests_arr.append(quest_data)
+                
+                c.execute("INSERT OR REPLACE INTO quests (category, quest_json, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)", (cat, json.dumps(quests_arr)))
+                conn.commit()
+                conn.close()
+                self._send(200, 'application/json', b'{"status": "success"}')
+            else:
+                self._send(400, 'application/json', b'{"status": "error"}')
         elif path == '/api/google_login':
             result = OAUTH.begin_login()
             self._send(200, 'application/json', json.dumps(result).encode())
@@ -787,10 +657,8 @@ def _run_http():
 
 if __name__ == '__main__':
     threading.Thread(target=_run_http, daemon=True).start()
-    if HAS_WEBSOCKETS:
-        threading.Thread(target=run_ws_server, daemon=True).start()
     print(f"[HTTP] http://127.0.0.1:{HTTP_PORT}")
-    print(f"[WS]   ws://0.0.0.0:{WS_PORT}")
+
 
     window = webview.create_window(
         title='Advanced Typing Instructor',

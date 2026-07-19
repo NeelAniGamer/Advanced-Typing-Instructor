@@ -1532,3 +1532,50 @@ button { outline: none; }
 
 /* Ensure text in typing box renders correctly for code */
 #game-typing-box .typing-text span { display: inline; }
+/* ── RESPONSIVE OVERRIDES ── */
+@media (max-width: 768px) {
+    #start-screen {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 5px !important;
+    }
+    .level-map-col, .quest-panel {
+        width: 100% !important;
+        min-width: unset !important;
+        max-width: unset !important;
+        flex: none !important;
+    }
+    .quest-panel {
+        max-height: unset !important;
+        height: auto !important;
+    }
+    .action-dock {
+        flex-wrap: wrap;
+    }
+    .virtual-keyboard {
+        display: none !important; /* Hide giant keyboard on small screens, users will use soft keyboard */
+    }
+    #main-header {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px;
+    }
+    .stat-box {
+        font-size: 0.8rem;
+        padding: 5px;
+    }
+}
+@media (max-width: 480px) {
+    h1.mega-title {
+        font-size: 2rem !important;
+    }
+    .category-card {
+        padding: 15px !important;
+    }
+    #game-text-display {
+        font-size: 1.5rem !important;
+        line-height: 1.4 !important;
+    }
+}

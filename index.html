@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Typing Instructor</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -427,7 +428,7 @@
      START / MAP SCREEN
 ═══════════════════════════════════════════════════ -->
 <div id="start-screen" class="hidden" style="display: flex; gap: 15px; max-width: 1500px; width: 95vw; margin: 10px auto; align-items: flex-start;">
-    <div class="level-map-col" style="flex: 2.5; min-width: 600px;">
+    <div class="level-map-col" style="flex: 2.5; min-width: 300px;">
         <div class="action-dock glass-card" style="margin: 0; padding: 10px; border-radius: 14px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
             <button id="back-to-diff-btn" class="compact-shop-icon" style="background: linear-gradient(135deg, rgba(80,80,80,0.4), rgba(40,40,40,0.6)); border-color: rgba(150,150,150,0.3); color:#ccc;">⮜ Difficulty</button>
             <button id="toggle-visuals-btn" class="compact-shop-icon" style="background: linear-gradient(135deg, rgba(96,125,139,0.4), rgba(69,90,100,0.6)); border-color: rgba(207,216,220,0.3); color:#cfd8dc;" title="Toggle Visual Enhancements">👁️ Visuals: ON</button>
@@ -442,6 +443,8 @@
             <button id="open-ach-btn" class="compact-shop-icon" style="background:linear-gradient(135deg,rgba(179,136,255,0.2),rgba(179,136,255,0.08));border-color:rgba(179,136,255,0.3);color:#b388ff;" title="Achievements">🎖 Achievements</button>
             <button id="open-tournament-btn" class="compact-shop-icon" style="background:linear-gradient(135deg,rgba(255,82,82,0.18),rgba(255,23,68,0.08));border-color:rgba(255,82,82,0.28);color:#ff8a80;" title="Tournaments">⚔️ Tournaments</button>
             <button id="open-global-lb-btn" class="compact-shop-icon" style="background:linear-gradient(135deg,rgba(0,245,255,0.12),rgba(0,245,255,0.05));border-color:rgba(0,245,255,0.22);color:#00e5ff;" title="World Rankings">🌍 World</button>
+            <button id="open-multiplayer-hub-btn" class="compact-shop-icon" style="background:linear-gradient(135deg,rgba(0,255,100,0.12),rgba(0,255,100,0.05));border-color:rgba(0,255,100,0.22);color:#00ff64;" title="Multiplayer">🌐 Multiplayer</button>
+            <button id="open-minigame-btn" class="compact-shop-icon" style="background:linear-gradient(135deg,rgba(255,152,0,0.12),rgba(255,152,0,0.05));border-color:rgba(255,152,0,0.22);color:#ff9800;" title="Minigame">☄️ Meteor Defense</button>
         </div>
 
         <div class="glass-card" style="margin: 0; flex-grow: 1; padding: 18px;">
@@ -464,7 +467,7 @@
         </div>
     </div>
 
-    <div class="glass-card quest-panel" style="flex: 1; min-width: 300px; max-width: 370px; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+    <div class="glass-card quest-panel" style="flex: 1; min-width: 250px; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
         <div id="start-screen-trophy" class="hidden" style="text-align: center; font-size: 2.5rem; filter: drop-shadow(0 0 15px gold); animation: floatBadge 2s infinite ease-in-out;">🏆</div>
         <div class="quest-tab-bar">
             <button class="quest-tab-btn active" data-tab="daily" onclick="switchQuestTab(this,'daily')">📅 Daily</button>
@@ -793,6 +796,86 @@
 ═══════════════════════════════════════════════════ -->
 <!-- (handled in JS — same #rank-up-sequence-screen, theme-red CSS drives color) -->
 
-<script src="script.js"></script>
+    <script type="module" src="js/audioEngine.js"></script>
+    <script type="module" src="js/gameState.js"></script>
+    <script type="module" src="js/questSystem.js"></script>
+    <script type="module" src="js/uiController.js"></script>
+    <script defer src="script.js"></script>
+<!-- ═══════════════════════════════════════════════════
+     MULTIPLAYER HUB MODAL
+═══════════════════════════════════════════════════ -->
+<div id="mp-hub-modal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:9999;display:flex;justify-content:center;align-items:center;">
+    <div class="glass-card" style="width:90%;max-width:800px;display:flex;flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:15px;margin-bottom:20px;">
+            <span style="font-size:1.6rem;font-family:var(--font-head);color:var(--primary);">🌐 Multiplayer Hub</span>
+            <button onclick="document.getElementById('mp-hub-modal').classList.add('hidden')" style="background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:100px;padding:5px 15px;color:#fff;cursor:pointer;">Close</button>
+        </div>
+        
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <!-- LOCAL LAN MULTIPLAYER -->
+            <div class="glass-card" style="flex:1;min-width:300px;text-align:center;padding:30px;background:linear-gradient(180deg, rgba(41,121,255,0.1) 0%, rgba(0,0,0,0) 100%);">
+                <h2 style="color:#2979ff;margin-top:0;">📡 Local Network (LAN)</h2>
+                <p style="color:rgba(255,255,255,0.6);font-size:0.9rem;">Play with others on the same Wi-Fi network with ultra-low latency.</p>
+                <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;">
+                    <button class="action-btn" onclick="createLanRoom()" style="background:#2979ff;">Host Game</button>
+                    <button class="action-btn outline" onclick="showLanJoin()">Join Game</button>
+                </div>
+            </div>
+            
+            <!-- GLOBAL ONLINE MULTIPLAYER -->
+            <div class="glass-card" style="flex:1;min-width:300px;text-align:center;padding:30px;background:linear-gradient(180deg, rgba(255,23,68,0.1) 0%, rgba(0,0,0,0) 100%);">
+                <h2 style="color:#ff1744;margin-top:0;">🌍 Global Online</h2>
+                <p style="color:rgba(255,255,255,0.6);font-size:0.9rem;">Matchmake with players around the world using Firebase.</p>
+                <div style="margin-top:20px;">
+                    <button class="action-btn" onclick="openGlobalMp()" style="background:#ff1744;">Enter Global Lobby</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     METEOR DEFENSE MINIGAME MODAL
+═══════════════════════════════════════════════════ -->
+<div id="meteor-defense-modal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,152,0,0.1);border-bottom:1px solid rgba(255,152,0,0.3);">
+        <span style="font-size:1.5rem;color:#ff9800;font-family:var(--font-head);">☄️ Meteor Defense</span>
+        <div style="color:#fff;font-size:1.2rem;">Score: <span id="meteor-score">0</span> | Lives: <span id="meteor-lives">3</span></div>
+        <button onclick="closeMeteorGame()" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:5px 15px;border-radius:100px;cursor:pointer;">Exit</button>
+    </div>
+    
+    <div id="meteor-game-area" style="flex:1;width:100%;position:relative;overflow:hidden;background:linear-gradient(to bottom, #000000 0%, #1a001a 100%);">
+        <!-- Meteors will be spawned here -->
+        <div id="meteor-ground" style="position:absolute;bottom:0;width:100%;height:30px;background:rgba(255,0,0,0.2);border-top:2px solid #ff1744;display:flex;justify-content:center;align-items:center;color:#ff1744;font-family:monospace;">DANGER ZONE</div>
+    </div>
+    
+    <div style="width:100%;padding:20px;background:#0d0d1a;display:flex;justify-content:center;align-items:center;gap:15px;">
+        <input type="text" id="meteor-input" style="font-size:1.5rem;padding:10px 20px;border-radius:8px;border:2px solid #ff9800;background:rgba(0,0,0,0.5);color:#fff;width:50%;text-align:center;outline:none;" placeholder="Type words here..." autocomplete="off">
+    </div>
+    
+    <div id="meteor-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:10000;">
+        <h1 style="color:#ff9800;font-size:4rem;margin:0;">METEOR DEFENSE</h1>
+        <p style="color:#fff;font-size:1.2rem;max-width:500px;text-align:center;margin-bottom:30px;">Type the words attached to the falling meteors before they hit the ground!</p>
+        <button onclick="startMeteorGame()" class="action-btn" style="font-size:1.5rem;padding:15px 40px;background:#ff9800;color:#000;">START GAME</button>
+    </div>
+</div>
+
+    <script defer src="meteor.js"></script>
+    <script defer src="google_auth.js"></script>
+    <script defer src="lan_mp.js"></script>
+    <script type="module" src="firebase_config.js"></script>
+    <script type="module" src="firebase_mp.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
+    <a href="/admin.html" target="_blank" style="position:fixed;bottom:10px;left:10px;color:rgba(255,255,255,0.2);text-decoration:none;font-size:0.8rem;z-index:999;">Admin Panel</a>
 </body>
 </html>
