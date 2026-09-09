@@ -1,83 +1,60 @@
 # -*- mode: python ; coding: utf-8 -*-
-# ============================================================
-#  Advanced Typing Instructor — PyInstaller Build Spec
-#  Produces a single-folder .exe on Windows
-#  and a .app bundle on macOS
-# ============================================================
+from PyInstaller.utils.hooks import collect_all
 
-import os
-
-# Collect all game assets (html / css / js / images)
-here = os.path.abspath(os.path.dirname(SPEC))
-assets = [
-    (os.path.join(here, 'index.html'),  '.'),
-    (os.path.join(here, 'style.css'),   '.'),
-    (os.path.join(here, 'script.js'),   '.'),
+datas = [
+    ('dist', 'dist'),
+    ('index.html', '.'),
+    ('style.css', '.'),
+    ('ui_fixes.css', '.'),
+    ('script.js', '.'),
+    ('patches.js', '.'),
+    ('achievements.js', '.'),
+    ('firebase_mp.js', '.'),
+    ('firebase_config.js', '.'),
+    ('google_auth.js', '.'),
+    ('emerald.png', '.'),
+    ('download.png', '.')
 ]
+binaries = []
+hiddenimports = ['websockets', 'websockets.server', 'websockets.legacy', 'websockets.legacy.server', 'websockets.connection', 'requests', 'clr', 'pythonnet']
+tmp_ret = collect_all('webview')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
-# Add any PNG/ICO images that exist next to main.py
-for fname in os.listdir(here):
-    if fname.lower().endswith(('.png', '.jpg', '.ico', '.svg', '.gif')):
-        assets.append((os.path.join(here, fname), '.'))
 
 a = Analysis(
     ['main.py'],
-    pathex=[here],
-    binaries=[],
-    datas=assets,
-    hiddenimports=[
-        'webview',
-        'webview.platforms.winforms',   # Windows
-        'webview.platforms.gtk',         # Linux
-        'webview.platforms.cocoa',       # macOS
-        'clr',
-        'pythonnet',
-    ],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter', 'matplotlib', 'numpy', 'pandas'],
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='AdvancedTypingInstructor',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,          # No black console window
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
     disable_windowed_traceback=False,
+    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # icon='icon.ico',      # Uncomment and add icon.ico to use a custom icon
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='AdvancedTypingInstructor',
-)
-
-# macOS .app bundle
-app = BUNDLE(
-    coll,
-    name='AdvancedTypingInstructor.app',
-    # icon='icon.icns',     # Uncomment for macOS icon
-    bundle_identifier='com.typinginstructor.app',
-    info_plist={
-        'NSHighResolutionCapable': True,
-        'LSUIElement': False,
-    },
+    version='version_info.txt',
+    icon=['game_icon.ico'],
 )

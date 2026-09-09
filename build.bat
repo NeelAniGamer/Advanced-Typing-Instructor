@@ -27,30 +27,37 @@ if errorlevel 1 (
     pause & exit /b 1
 )
 
+:: ── Build React Vite Frontend ──────────────────────────────
+echo  [2/5] Building React Vite frontend...
+call npm run build
+if errorlevel 1 (
+    echo  ERROR: Vite build failed.
+    pause & exit /b 1
+)
+
 :: ── Clean previous build ──────────────────────────────────
-echo  [2/4] Cleaning previous build...
+echo  [3/5] Cleaning previous Python build...
 if exist dist\AdvancedTypingInstructor rmdir /s /q dist\AdvancedTypingInstructor
 if exist dist\AdvancedTypingInstructor.exe del /f /q dist\AdvancedTypingInstructor.exe
 if exist build rmdir /s /q build
-if exist AdvancedTypingInstructor.spec del /f /q AdvancedTypingInstructor.spec
 
 :: ── Run PyInstaller ───────────────────────────────────────
-echo  [3/4] Compiling with PyInstaller (this takes 1-3 minutes)...
+echo  [4/5] Compiling with PyInstaller (this takes 1-3 minutes)...
 
 pyinstaller ^
     --onefile ^
     --windowed ^
     --name "AdvancedTypingInstructor" ^
+    --add-data "dist;dist" ^
     --add-data "index.html;." ^
     --add-data "style.css;." ^
+    --add-data "ui_fixes.css;." ^
     --add-data "script.js;." ^
-    --add-data "style_additions.css;." ^
+    --add-data "patches.js;." ^
     --add-data "achievements.js;." ^
     --add-data "firebase_mp.js;." ^
     --add-data "firebase_config.js;." ^
     --add-data "google_auth.js;." ^
-    --add-data "multiplayer.js;." ^
-    --add-data "html_additions.html;." ^
     --add-data "emerald.png;." ^
     --add-data "download.png;." ^
     --hidden-import "websockets" ^
@@ -58,10 +65,11 @@ pyinstaller ^
     --hidden-import "websockets.legacy" ^
     --hidden-import "websockets.legacy.server" ^
     --hidden-import "websockets.connection" ^
+    --hidden-import "requests" ^
     --hidden-import "clr" ^
     --hidden-import "pythonnet" ^
     --collect-all "webview" ^
-    --icon "icon.ico" ^
+    --icon "game_icon.ico" ^
     --version-file "version_info.txt" ^
     main.py
 

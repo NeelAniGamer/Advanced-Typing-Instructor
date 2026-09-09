@@ -1,0 +1,15 @@
+{
+  "name": "ati-multiplayer-server",
+  "version": "2.5.0",
+  "description": "Standalone WebSocket Relay Server for Advanced Typing Instructor v2.5",
+  "main": "multiplayer_server.js",
+  "scripts": {
+    "start": "node multiplayer_server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

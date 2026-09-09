@@ -476,6 +476,11 @@ const WEEKLY_CODE_POOL_FULL = [
 // ─────────────────────────────────────────────────────────
 // 5.  ACCOUNT CENTRE  (username + settings panel)
 //     Opens via the existing account modal
+//
+//     NOTE: This definition is overwritten by google_auth.js, which loads
+//     after this file and reassigns window.renderAccountPanel last. Edits
+//     made here will NOT appear in the app — edit google_auth.js's
+//     renderAccountPanel instead.
 // ─────────────────────────────────────────────────────────
 window.renderAccountPanel = function() {
     const panel = document.getElementById('account-panel-content');

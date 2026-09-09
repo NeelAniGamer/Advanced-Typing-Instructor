@@ -1,0 +1,121 @@
+================================================================================
+  ADVANCED TYPING INSTRUCTOR (ATI v2.5) — VIDEO TITLES & DESCRIPTIONS
+================================================================================
+
+--------------------------------------------------------------------------------
+1. YOUTUBE SHORTS / TIKTOK / INSTAGRAM REELS (Vertical 9:16 Video)
+   File: out_shorts.mp4 (1080x1920)
+--------------------------------------------------------------------------------
+
+[CATCHY TITLES - CHOOSE ONE]
+Option 1: I Replaced Boring Typing Tests With A Boss Fight 💀⚔️
+Option 2: POV: Your Keyboard Sounds Like An ASMR Machine Gun ⚡🎧
+Option 3: Typing at 168 WPM Should NOT Feel This Addictive 🔥⌨️
+Option 4: Why Practice Typing When You Can Race Friends In Cyberpunk? 🏎️💨
+Option 5: I Turned Speed Typing Into An Arcade Esports Game! 🚀
+
+[DESCRIPTION]
+Typing tutors from the 2000s are officially dead. 💀
+
+Meet Advanced Typing Instructor (ATI v2.5) — rebuilt with React 18, Framer Motion, tactile Cherry MX sound synthesis, boss fights against the Latency Golem, and real-time multiplayer racing across the globe via Supabase!
+
+🚀 Play the standalone desktop app: https://advancedlogiclabs.dpdns.org
+💻 Built with React 18 + TypeScript + Tailwind + Supabase Realtime + Python
+
+[HASHTAGS]
+#Typing #Keyboards #Programming #Coding #ReactJS #WebDev #MechanicalKeyboards #IndieGame #SpeedTyping #Shorts #Tech
+
+[TAGS / KEYWORDS]
+typing test, speed typing, mechanical keyboard asmr, 160 wpm typing, monkeytype alternative, typing tutor, boss fight game, react 18 game, indie game dev, multiplayer typing race, cherry mx blue
+
+
+--------------------------------------------------------------------------------
+2. FULL FEATURE SHOWCASE VIDEO (Landscape 16:9 Video)
+   File: out_showcase.mp4 (1920x1080)
+--------------------------------------------------------------------------------
+
+[CATCHY TITLES - CHOOSE ONE]
+Option 1: I Built The Cyberpunk Typing Game I Always Wanted (React 18 + Supabase)
+Option 2: From 40 WPM to 160 WPM: The Ultimate Competitive Typing Engine
+Option 3: We Rebuilt Typing Tutors Into A High-Speed Racing Game ⚡
+Option 4: The Most Satisfying Typing Simulator Ever Created | ATI 2.5 Showcase
+Option 5: Building An Esports Typing Arena With Mechanical Switch Audio & Global Netplay
+
+[DESCRIPTION]
+Welcome to the official feature showcase of Advanced Typing Instructor (ATI v2.5)!
+
+Most typing tools are static, uninspired text boxes. We transformed ATI into a full-scale competitive gaming experience featuring cyber-mechanical HUDs, authentic mechanical switch sound synthesis (Cherry Blue, Brown, Red), boss battles against the Latency Golem, and zero-latency multiplayer racing.
+
+⏱️ TIMESTAMPS:
+0:00 - Out with the Old: Architecture Evolution (Vanilla to React 18 + TSX)
+0:05 - Cyber-Mechanical HUD & 10-Tier Rank System
+0:10 - Tactile Typing Arena & Virtual Keycap Actuation
+0:15 - 200-Level Campaign & Milestone Boss Encounters
+0:20 - Realtime Global Multiplayer Circuit (Supabase & WebSockets)
+0:25 - Diagnostic Error Heatmap & Performance Analytics
+0:30 - Standalone Windows Executable & Future Roadmap
+
+🔥 KEY FEATURES:
+• ⚡ 60FPS Reactive Typing Engine with spring-physics caret & instant WPM tachometer
+• 🎧 3 Mechanical Switch Sound Profiles (Cherry Blue, Red, Brown)
+• ⚔️ Milestone Boss Arena: Defeat the Latency Golem with precision streaks
+• 🌐 Global Multiplayer Circuit: Race friends worldwide with Supabase Realtime & custom site relay
+• 🏆 Persistent SQLite Gamer Profiles: Custom avatars, titles, rank badges & lifetime stats
+• 🗺️ 200-Level Adventure Map across 5 cyber-themed chapters
+• 📊 Real-Time Diagnostic Keyboard Heatmap: Pinpoint finger weaknesses & error clusters
+
+📥 DOWNLOAD & PLAY:
+• Website: https://advancedlogiclabs.dpdns.org
+• Windows .exe: Available in the repository release dist/ folder
+
+🛠️ TECH STACK:
+React 18 | TypeScript | Tailwind CSS | Framer Motion | Remotion | Web Audio API | Supabase Realtime | Python pywebview | SQLite
+
+If you enjoyed the video, drop a like, subscribe, and let us know your personal best WPM in the comments below! ⌨️💨
+
+[TAGS / KEYWORDS]
+speed typing game, competitive typing, react 18 typescript project, remotion video, supabase realtime game, mechanical keyboard sound simulator, monkeytype competitor, typing practice software, python pywebview app, desktop game development
+
+
+--------------------------------------------------------------------------------
+3. WEBSITE / GITHUB / ITCH.IO PRODUCT RELEASE
+--------------------------------------------------------------------------------
+
+[APP TITLE]
+Advanced Typing Instructor (ATI v2.5)
+
+[TAGLINE / ONE-LINER]
+The Cyber-Mechanical Competitive Typing Engine & Real-Time Multiplayer Circuit.
+Ditch boring typing tests. Level up your speed to 150+ WPM with tactile mechanical switch audio, epic boss battles, and global multiplayer racing.
+
+[SHORT OVERVIEW]
+Advanced Typing Instructor (ATI) is a modern desktop typing tutor and competitive racing game. Built from the ground up with React 18, TypeScript, and Tailwind CSS, ATI fuses high-speed typing practice with arcade gaming mechanics.
+
+[KEY BULLETS]
+- ⌨️ Tactile Typing Engine: Real-time spring-physics caret, live tachometer, spacebar confirmation, and glowing virtual mechanical keycaps.
+- 🎧 Web Audio Switch Synthesizer: Cherry MX Blue (clicky), Brown (tactile), and Red (linear) switch acoustics.
+- 🏎️ Global Multiplayer Circuit: Zero-config multiplayer powered by Supabase Realtime Cloud (hvukxajztizsuhfubjws) and custom domain relay (advancedlogiclabs.dpdns.org).
+- 👤 Persistent Gamer Profiles: SQLite persistence for lifetime stats, win rates, custom avatars, titles, and 10 dynamic rank tiers.
+- ⚔️ Boss Arenas: Encounter and conquer the Latency Golem with combo multipliers.
+- 📊 Error Heatmap: Real-time visual diagnosis of weak fingers and error clusters.
+- 🖥️ Standalone Executable: 20.9 MB single-file Windows .exe ready to play immediately.
+
+
+--------------------------------------------------------------------------------
+4. SOCIAL MEDIA ANNOUNCEMENT (X / Twitter / Discord)
+--------------------------------------------------------------------------------
+Say goodbye to boring typing tutors. 👋⌨️
+
+We just overhauled Advanced Typing Instructor into a full-blown Cyberpunk Esports Game!
+
+✨ React 18 + TSX + Framer Motion
+🎧 Mechanical Switch Sound Synthesizer
+👾 Boss Battles vs. The Latency Golem
+🏎️ Global Real-Time Multiplayer Racing (Supabase + Custom Site)
+📊 Interactive Error Heatmap
+🖥️ Single-file Windows .exe
+
+Check it out: https://advancedlogiclabs.dpdns.org
+What's your current WPM? Drop it below! 👇🔥
+
+================================================================================

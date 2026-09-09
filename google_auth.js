@@ -220,6 +220,18 @@ const GoogleAuth = (() => {
             </div>`).join('')}
         </div>
 
+        <!-- EDIT PROFILE -->
+        <div style="font-family:var(--font-head);font-size:0.66rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin:0 0 8px;">EDIT PROFILE</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <input id="edit-acc-name" style="flex:1;background:rgba(0,0,0,0.45);border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 14px;color:#e8e8f0;font-size:0.95rem;font-family:var(--font-main);outline:none;" value="${acc.name}" maxlength="20" placeholder="Display name">
+            <button onclick="accSaveName()" style="background:var(--primary);color:#000;border:none;border-radius:10px;padding:9px 16px;font-family:var(--font-main);font-size:0.9rem;font-weight:700;cursor:pointer;white-space:nowrap;">Save Name</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button onclick="document.getElementById('account-modal').classList.add('hidden');startPlacementTest();" style="background:rgba(179,136,255,0.1);border:1px solid rgba(179,136,255,0.3);border-radius:10px;padding:8px 16px;color:#b388ff;font-family:var(--font-main);font-size:0.88rem;font-weight:700;cursor:pointer;">🎯 Retake Placement Test</button>
+            ${acc.id !== 'guest' ? `<button onclick="if(confirm('Switch to guest?')){switchAccount('guest');renderAccountPanel();}" style="background:rgba(255,23,68,0.1);border:1px solid rgba(255,23,68,0.28);border-radius:10px;padding:8px 16px;color:#ff5252;font-family:var(--font-main);font-size:0.88rem;font-weight:700;cursor:pointer;">Switch To Guest</button>` : ''}
+        </div>
+
         <!-- SETTINGS -->
         <div style="font-family:var(--font-head);font-size:0.66rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin:0 0 8px;">SETTINGS</div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
@@ -229,6 +241,8 @@ const GoogleAuth = (() => {
                 {key:'kb',    label:'Show Keyboard',    on: localStorage.getItem('tq_hide_kb')!=='1'},
                 {key:'pause', label:'Post-Level Pause', on: localStorage.getItem('tq_skip_pause')!=='1'},
                 {key:'ghost', label:'Ghost Runner',     on: localStorage.getItem('tq_hide_ghost')!=='1'},
+                {key:'blind', label:'Blind Mode (hide errors)', on: localStorage.getItem('tq_blind_mode')==='1'},
+                {key:'typewriter', label:'Typewriter Sound Style', on: localStorage.getItem('tq_free_audio_style')==='typewriter'},
             ].map(s=>`
             <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;">
                 <span style="font-family:var(--font-main);font-size:0.9rem;font-weight:600;color:rgba(255,255,255,0.7);">${s.label}</span>
@@ -241,8 +255,8 @@ const GoogleAuth = (() => {
             <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;">
                 <span style="font-family:var(--font-main);font-size:0.9rem;font-weight:600;color:rgba(255,255,255,0.7);">Colour Theme</span>
                 <select onchange="accSetTheme(this.value)" style="background:rgba(0,0,0,0.5);border:1.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 10px;color:var(--primary);font-family:var(--font-main);font-size:0.85rem;font-weight:600;cursor:pointer;outline:none;">
-                    <option value="cyan"   ${(localStorage.getItem('tq_theme')||'cyan')==='cyan'?'selected':''}>Cyan (Default)</option>
-                    <option value="purple" ${localStorage.getItem('tq_theme')==='purple'?'selected':''}>Purple</option>
+                    <option value="cyan"   ${localStorage.getItem('tq_theme')==='cyan'?'selected':''}>Cyan</option>
+                    <option value="purple" ${(localStorage.getItem('tq_theme')||'purple')==='purple'?'selected':''}>Purple (Default)</option>
                     <option value="green"  ${localStorage.getItem('tq_theme')==='green'?'selected':''}>Matrix Green</option>
                     <option value="orange" ${localStorage.getItem('tq_theme')==='orange'?'selected':''}>Amber</option>
                 </select>
@@ -257,7 +271,7 @@ const GoogleAuth = (() => {
                 <div class="profile-mini-avatar">${a.name.charAt(0).toUpperCase()}</div>
                 <div class="profile-info">
                     <div class="profile-info-name">${a.name}</div>
-                    <div class="profile-info-sub">Streak ${a.loginStreak||1}d</div>
+                    <div class="profile-info-sub">Streak ${a.loginStreak||1}d${a.streakFreezes ? ` · 🧊×${a.streakFreezes}` : ''}</div>
                 </div>
                 ${a.id===acc.id
                     ? '<span style="color:var(--primary);font-family:var(--font-code);font-size:0.75rem;">ACTIVE</span>'
@@ -278,6 +292,22 @@ const GoogleAuth = (() => {
         if (key === 'kb')    { localStorage.setItem('tq_hide_kb', val?'0':'1'); const kb = document.getElementById('virtual-keyboard'); if(kb) kb.style.display = val?'':'none'; }
         if (key === 'pause') localStorage.setItem('tq_skip_pause', val?'0':'1');
         if (key === 'ghost') { localStorage.setItem('tq_hide_ghost', val?'0':'1'); const gt = document.getElementById('ghost-track'); if(gt) gt.style.display = val?'':'none'; }
+        if (key === 'blind') { localStorage.setItem('tq_blind_mode', val?'1':'0'); if (typeof window.applyBlindMode === 'function') window.applyBlindMode(); }
+        if (key === 'typewriter') {
+            localStorage.setItem('tq_free_audio_style', val ? 'typewriter' : 'default');
+            // Only takes visible effect if no paid audio theme is owned —
+            // those still take precedence, same as before this toggle existed.
+            // NOTE: assigns the bare identifier, not window.activeAudioProfile —
+            // classic <script> tags share one global lexical scope, but a
+            // top-level `let` is NOT the same binding as a `window.` property,
+            // so SFX.playType() (which reads the bare identifier) would never
+            // have seen a change made through window.activeAudioProfile.
+            const owned = (typeof getOwnedUpgrades === 'function') ? getOwnedUpgrades() : [];
+            const hasPaidAudio = owned.some(o => o === 'audio-cherry' || o === 'audio-arcade' || o === 'audio-alien');
+            if (!hasPaidAudio && typeof activeAudioProfile !== 'undefined') {
+                activeAudioProfile = val ? 'typewriter' : 'default';
+            }
+        }
         renderAccountPanel();
     };
 
@@ -301,7 +331,12 @@ const GoogleAuth = (() => {
     };
 
     // ── Apply theme + settings on load ────────────────────────
-    window.accSetTheme(localStorage.getItem('tq_theme') || 'cyan');
+    // Only override the theme when the player has actually chosen one —
+    // previously this always ran with a 'cyan' fallback, meaning every
+    // new/guest user's first-ever session got recolored away from the
+    // violet identity already set as the :root CSS defaults.
+    const _savedTheme = localStorage.getItem('tq_theme');
+    if (_savedTheme) window.accSetTheme(_savedTheme);
     if (localStorage.getItem('tq_hide_kb') === '1') { const kb = document.getElementById('virtual-keyboard'); if(kb) kb.style.display='none'; }
     if (localStorage.getItem('tq_hide_ghost') === '1') { const gt = document.getElementById('ghost-track'); if(gt) gt.style.display='none'; }
 
@@ -326,3 +361,16 @@ const GoogleAuth = (() => {
     };
 
 })();
+
+// PHASE 7: re-apply the equipped avatar cosmetic every time the account
+// panel re-renders (it rebuilds .profile-mini-avatar elements fresh each
+// time, which would otherwise revert to the CSS default until the next
+// unrelated trigger). Wraps rather than edits the function directly,
+// matching the existing pattern used elsewhere in this codebase.
+if (typeof window.renderAccountPanel === 'function') {
+    const _origRenderAccountPanel = window.renderAccountPanel;
+    window.renderAccountPanel = function() {
+        _origRenderAccountPanel();
+        if (typeof applyAvatarCosmetic === 'function') applyAvatarCosmetic();
+    };
+}

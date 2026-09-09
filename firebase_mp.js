@@ -379,7 +379,13 @@ const MP = (() => {
         const typedChar = input.value[raceCharIndex];
         if (typedChar === undefined) return;
 
-        if (typedChar === chars[raceCharIndex].textContent) {
+        // Feed the same heatmap the solo game uses, so multiplayer races
+        // count toward weak-key detection instead of being a silo of their
+        // own that contributes nothing to adaptive practice.
+        const expectedChar = chars[raceCharIndex].textContent;
+        if (typeof flashKey === 'function') flashKey(typedChar, typedChar === expectedChar);
+
+        if (typedChar === expectedChar) {
             chars[raceCharIndex].classList.remove('active');
             chars[raceCharIndex].classList.add('correct');
             raceCharIndex++;
@@ -405,10 +411,13 @@ const MP = (() => {
         const input = document.getElementById('mp-race-input');
         if (input) input.disabled = true;
 
+        // Declared here (not inside the block below) so it's still in
+        // scope for the quest-progress check further down.
+        let finalRank = 1;
+
         // Atomic rank assignment via transaction
         if (db && currentRoomId) {
             const roomRef = db.collection('rooms').doc(currentRoomId);
-            let finalRank = 1;
             await db.runTransaction(async t => {
                 const roomDoc = await t.get(roomRef);
                 const order   = roomDoc.data().finishOrder || [];
@@ -429,6 +438,18 @@ const MP = (() => {
         }
         // Update global user stats
         updateGlobalStats({ lastRaceWpm: wpm, racesFinished: 1 });
+
+        // Feed the multiplayer quests (Finish/Win a race) — see
+        // updateMultiplayerQuestProgress in script.js for why this
+        // bypasses the usual Literature/Code category gate.
+        if (typeof updateMultiplayerQuestProgress === 'function') {
+            updateMultiplayerQuestProgress('d_mp1', 1);
+            updateMultiplayerQuestProgress('wk_mp5', 1);
+            if (finalRank === 1) {
+                updateMultiplayerQuestProgress('wk_mpw2', 1);
+                updateMultiplayerQuestProgress('ch_mp10', 1);
+            }
+        }
     }
 
     // ── Race over ──────────────────────────────────────────
@@ -612,15 +633,125 @@ const MP = (() => {
         try {
             const doc = await userRef.get();
             if (!doc.exists) {
-                await userRef.set({ displayName: auth.currentUser.displayName, email: auth.currentUser.email, photoURL: auth.currentUser.photoURL, totalRaces:0, wins:0, bestWpm:0, createdAt: firebase.firestore.FieldValue.serverTimestamp(), ...updates });
+                // A short, shareable code (last 6 of the UID, uppercased)
+                // so friends can find each other without exposing email —
+                // same idea as the multiplayer room codes.
+                const playerCode = auth.currentUser.uid.slice(-6).toUpperCase();
+                await userRef.set({ displayName: auth.currentUser.displayName, email: auth.currentUser.email, photoURL: auth.currentUser.photoURL, totalRaces:0, wins:0, bestWpm:0, playerCode, friends: [], createdAt: firebase.firestore.FieldValue.serverTimestamp(), ...updates });
             } else {
                 const existing = doc.data();
                 if (delta.lastRaceWpm && delta.lastRaceWpm > (existing.bestWpm||0)) {
                     updates.bestWpm = delta.lastRaceWpm;
                 }
+                if (!existing.playerCode) updates.playerCode = auth.currentUser.uid.slice(-6).toUpperCase();
                 await userRef.update(updates);
             }
         } catch(e) {}
+    }
+
+    // ── Global leaderboard (Phase 7 — was called from script.js as
+    //    GoogleAuth.loadGlobalLeaderboard, which was never actually
+    //    defined anywhere; that call silently did nothing and the
+    //    leaderboard stayed blank for every signed-in user. Implemented
+    //    here since this module already holds the real db reference. ──
+    async function loadGlobalLeaderboard(sortField) {
+        const el = document.getElementById('global-lb-list');
+        if (!el || !db) return;
+        try {
+            const snap = await db.collection('users').orderBy(sortField || 'bestWpm', 'desc').limit(20).get();
+            if (snap.empty) {
+                el.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,0.25);font-family:var(--font-code);font-size:0.85rem;">No global scores yet — be the first!</div>';
+                return;
+            }
+            let i = 0;
+            el.innerHTML = snap.docs.map(d => {
+                const u = d.data(); const rank = i++;
+                const medal = rank===0?'🥇':rank===1?'🥈':rank===2?'🥉':'#'+(rank+1);
+                const color = rank===0?'#ffd54f':rank===1?'#b0bec5':rank===2?'#a1887f':'rgba(255,255,255,0.4)';
+                return `<div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;">
+                    <span style="font-family:var(--font-head);font-size:1.1rem;color:${color};">${medal}</span>
+                    <span style="flex:1;font-family:var(--font-main);font-weight:600;">${u.displayName || 'Player'}</span>
+                    <span style="font-family:var(--font-main);color:var(--primary);font-weight:700;">${u.bestWpm||0} WPM</span>
+                    <span style="font-family:var(--font-code);font-size:0.8rem;color:rgba(255,255,255,0.4);">${u.wins||0} wins</span>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            el.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,0.3);font-family:var(--font-code);font-size:0.82rem;">Couldn\'t load rankings right now.</div>';
+        }
+    }
+
+    // ── Friends (Phase 7) ──────────────────────────────────
+    // Friend codes are the same short-code idea as room codes — no email
+    // exposed, easy to read out loud or paste into a chat.
+    async function addFriendByCode(code) {
+        if (!db || !auth?.currentUser) { showToast('Sign in with Google to add friends.', 'error'); return; }
+        const cleanCode = (code || '').trim().toUpperCase();
+        if (!cleanCode) return;
+        try {
+            const snap = await db.collection('users').where('playerCode', '==', cleanCode).limit(1).get();
+            if (snap.empty) { showToast('No player found with that code.', 'error'); return; }
+            const friendDoc = snap.docs[0];
+            if (friendDoc.id === auth.currentUser.uid) { showToast("That's your own code!", 'error'); return; }
+            await db.collection('users').doc(auth.currentUser.uid).update({
+                friends: firebase.firestore.FieldValue.arrayUnion(friendDoc.id)
+            });
+            showToast(`Added ${friendDoc.data().displayName || 'Player'} as a friend!`, 'success');
+            loadFriends();
+        } catch(e) {
+            showToast('Could not add friend right now.', 'error');
+        }
+    }
+
+    async function loadFriends() {
+        const el = document.getElementById('friends-list');
+        if (!el) return;
+        if (!db || !auth?.currentUser) {
+            el.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.25);font-family:var(--font-code);font-size:0.82rem;">Sign in with Google to add friends and compare stats.</div>';
+            return;
+        }
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-family:var(--font-code);font-size:0.8rem;">Loading friends...</div>';
+        try {
+            const meDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+            const me = meDoc.exists ? meDoc.data() : { bestWpm: 0, playerCode: '------' };
+            const codeDisplay = document.getElementById('my-friend-code');
+            if (codeDisplay) codeDisplay.textContent = me.playerCode || '------';
+
+            const friendIds = (me.friends || []).slice(0, 30);
+            if (!friendIds.length) {
+                el.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.25);font-family:var(--font-code);font-size:0.82rem;">No friends added yet — share your code above!</div>';
+                return;
+            }
+            const friendDocs = await Promise.all(friendIds.map(id => db.collection('users').doc(id).get()));
+            const rows = friendDocs.filter(d => d.exists).map(d => {
+                const f = d.data();
+                const diff = (f.bestWpm||0) - (me.bestWpm||0);
+                const diffLabel = diff > 0 ? `<span style="color:#ff8a80;">+${diff} ahead of you</span>` : diff < 0 ? `<span style="color:#69f0ae;">${Math.abs(diff)} behind you</span>` : `<span style="color:rgba(255,255,255,0.4);">tied with you</span>`;
+                return `<div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 14px;">
+                    <span style="flex:1;font-family:var(--font-main);font-weight:600;">${f.displayName || 'Player'}</span>
+                    <span style="font-family:var(--font-main);color:var(--primary);font-weight:700;">${f.bestWpm||0} WPM</span>
+                    <span style="font-family:var(--font-code);font-size:0.76rem;">${diffLabel}</span>
+                </div>`;
+            }).join('');
+            el.innerHTML = rows || '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.25);font-family:var(--font-code);font-size:0.82rem;">No friends found.</div>';
+        } catch(e) {
+            el.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-family:var(--font-code);font-size:0.82rem;">Couldn\'t load friends right now.</div>';
+        }
+    }
+
+    // ── Challenge message (Phase 7) — the practical version of a
+    //    "shareable link" for a desktop app with no public URL scheme:
+    //    a copyable text blurb with the room code, ready to paste into
+    //    any chat app. ──
+    function copyChallengeMessage() {
+        if (!currentRoomCode) { showToast('Create or join a room first.', 'error'); return; }
+        const msg = `Race me in Advanced Typing Instructor! Join with room code: ${currentRoomCode}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(msg)
+                .then(() => showToast('Challenge message copied!', 'success'))
+                .catch(() => showToast(`Room code: ${currentRoomCode} (copy failed — clipboard blocked)`, 'info', 5000));
+        } else {
+            showToast(`Room code: ${currentRoomCode} (copy it to share)`, 'info', 5000);
+        }
     }
 
     // ── SFX helper ─────────────────────────────────────────
@@ -682,6 +813,10 @@ const MP = (() => {
         isConnected: () => !!db,
         isInRoom:    () => !!currentRoomId,
         getRoom:     () => currentRoomCode,
+        loadGlobalLeaderboard,
+        addFriendByCode,
+        loadFriends,
+        copyChallengeMessage,
     };
 })();
 

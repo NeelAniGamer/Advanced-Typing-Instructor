@@ -1,15 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 /* ═══════════════════════════════════════════════════════════
-   ui_fixes.css
-   Add after style.css:  <link rel="stylesheet" href="ui_fixes.css">
-   Fixes: natural fonts · purple default theme · detached
-          full-width keyboard · clean typing box
+   ui_fixes.css — Advanced Typing Instructor 1.4
+   Fixes: natural fonts · purple cyber theme · achievements
+          keyboard heatmaps · clean modal layout
 ═══════════════════════════════════════════════════════════ */
 
-/* ── 1. NATURAL FONTS ──────────────────────────────────────
-   Replace Orbitron/Rajdhani with clean system fonts.
-   Headings → Inter semibold. Body → system-ui stack.
-   Code → Consolas / monospace stack (no web font needed).    */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
     --font-main: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -137,48 +133,88 @@ body::after {
 .typing-text .correct   { color: #a5d6a7 !important; }
 .typing-text .incorrect { color: #ef9a9a !important; background: rgba(239,154,154,0.12) !important; border-radius: 2px !important; }
 
-/* ── 4. KEYBOARD DETACHED — full screen width ──────────────
-   The keyboard sits OUTSIDE and BELOW the game card,
-   spanning the full viewport width as a fixed footer bar.    */
-#virtual-keyboard {
-    position:   fixed !important;
-    bottom:     0 !important;
-    left:       0 !important;
-    right:      0 !important;
-    width:      100vw !important;
-    margin:     0 !important;
-    z-index:    500 !important;
-    border-radius: 0 !important;
-    border-left:   none !important;
-    border-right:  none !important;
-    border-bottom: none !important;
-    border-top:    1px solid rgba(179,136,255,0.12) !important;
-    background: rgba(9, 7, 26, 0.97) !important;
+/* ── 4. KEYBOARD CONTAINER & GAME SCREEN CENTERING ────────── */
+#game-screen {
+    position: relative !important;
+    max-width: 1040px !important;
+    width: 92vw !important;
+    margin: 40px auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 2rem 2.5rem !important;
+    box-sizing: border-box !important;
+    border-radius: 20px !important;
+}
+
+#game-screen.hidden {
+    display: none !important;
+}
+
+#game-screen > *:not(#back-from-game-btn):not(#game-pause-overlay):not(#hiddenInputField) {
+    width: 100% !important;
+}
+
+#back-from-game-btn {
+    width: auto !important;
+    position: absolute !important;
+    top: 24px !important;
+    left: 24px !important;
+    z-index: 20 !important;
+}
+
+
+#virtual-keyboard, .keyboard {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 820px !important;
+    margin: 20px auto 0 !important;
+    z-index: 10 !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(179, 136, 255, 0.2) !important;
+    background: rgba(9, 7, 24, 0.85) !important;
     backdrop-filter: blur(16px) saturate(140%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
-    padding: 10px 0 14px !important;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.6) !important;
+    padding: 14px 10px !important;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     gap: 6px !important;
 }
 
-/* Give the game screen enough bottom padding so the
-   typing box is never hidden behind the keyboard bar       */
-#game-screen {
-    padding-bottom: 170px !important;
-    max-width: 900px !important;
-    margin: 0 auto !important;
+.stats-box {
+    background: rgba(14, 10, 30, 0.7) !important;
+    border: 1px solid rgba(179, 136, 255, 0.2) !important;
+    border-radius: 14px !important;
+    padding: 10px 20px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
 }
 
-/* Slightly larger keys since we have more horizontal space */
-.key {
-    width:  38px !important;
-    height: 38px !important;
-    font-size: 0.78rem !important;
-    font-family: var(--font-main) !important;
-    font-weight: 500 !important;
-    border-radius: 6px !important;
+.typing-text-container {
+    background: rgba(8, 6, 20, 0.92) !important;
+    border: 1px solid rgba(179, 136, 255, 0.25) !important;
+    border-radius: 14px !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.6), 0 0 24px rgba(179, 136, 255, 0.08) !important;
 }
-.key.spacebar { width: 220px !important; }
+
+
+/* Slightly larger keys with tactile feel */
+.key {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 0.82rem !important;
+    font-family: var(--font-main) !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.4) !important;
+    transition: all 0.1s ease !important;
+}
+.key.spacebar { width: 280px !important; }
+
 
 /* Finger-zone key colours — harmonise with purple */
 .zone-pinky-l  { background: rgba(74,20,140,0.45) !important; border: 1px solid rgba(156,39,176,0.35) !important; color: #e1bee7 !important; }
@@ -242,8 +278,8 @@ body::after {
 
 /* On-fire glow purple */
 .on-fire {
-    box-shadow: 0 0 20px rgba(179,136,255,0.6),
-                inset 0 0 20px rgba(179,136,255,0.15) !important;
+    box-shadow: 0 0 24px rgba(179,136,255,0.65),
+                inset 0 0 20px rgba(179,136,255,0.2) !important;
     border-color: #b388ff !important;
 }
 
@@ -252,3 +288,241 @@ body::after {
     border-bottom-color: #b388ff !important;
     color: #d4b8ff !important;
 }
+
+/* ── 10. POLISHED CYBER GLASS & ACCENTS ─────────────────── */
+.glass-card {
+    background: rgba(14, 11, 26, 0.88) !important;
+    backdrop-filter: blur(24px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+    border: 1px solid rgba(179, 136, 255, 0.2) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.landing-badge {
+    background: rgba(179, 136, 255, 0.12) !important;
+    border: 1px solid rgba(179, 136, 255, 0.35) !important;
+    color: #e0c8ff !important;
+    text-shadow: 0 0 12px rgba(179, 136, 255, 0.5) !important;
+    letter-spacing: 0.18em !important;
+}
+
+.massive-btn {
+    box-shadow: 0 0 35px rgba(179, 136, 255, 0.45), 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.massive-btn:hover {
+    transform: translateY(-3px) scale(1.03) !important;
+    box-shadow: 0 0 55px rgba(179, 136, 255, 0.75), 0 12px 32px rgba(0, 0, 0, 0.7) !important;
+}
+
+.key.key-active, .key.pressed {
+    background: linear-gradient(135deg, rgba(179, 136, 255, 0.4), rgba(105, 255, 71, 0.3)) !important;
+    border-color: #b388ff !important;
+    box-shadow: 0 0 18px rgba(179, 136, 255, 0.7) !important;
+    color: #fff !important;
+}
+
+/* ── 11. ACHIEVEMENTS SYSTEM & SUMMARY STATS ─────────────── */
+#ach-header-stats {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+    gap: 12px !important;
+    margin-bottom: 8px !important;
+}
+
+.ach-summary-stat {
+    background: rgba(25, 18, 48, 0.75) !important;
+    border: 1px solid rgba(179, 136, 255, 0.25) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+    transition: all 0.2s ease !important;
+}
+
+.ach-summary-stat:hover {
+    border-color: rgba(179, 136, 255, 0.5) !important;
+    transform: translateY(-2px) !important;
+    background: rgba(35, 25, 65, 0.85) !important;
+}
+
+.ach-sum-val {
+    font-family: var(--font-main) !important;
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    color: #e0c8ff !important;
+    line-height: 1.1 !important;
+    text-shadow: 0 0 15px rgba(179, 136, 255, 0.4) !important;
+}
+
+.ach-sum-label {
+    font-family: var(--font-main) !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    margin-top: 4px !important;
+}
+
+.ach-category {
+    margin-bottom: 20px !important;
+}
+
+.ach-cat-label {
+    font-family: var(--font-head) !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #b388ff !important;
+    margin-bottom: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    letter-spacing: 0.04em !important;
+}
+
+.ach-row {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+    gap: 12px !important;
+}
+
+.ach-card {
+    background: rgba(18, 13, 35, 0.82) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    position: relative !important;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    overflow: hidden !important;
+}
+
+.ach-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ach-card.ach-unlocked {
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    background: rgba(16, 185, 129, 0.06) !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1) !important;
+}
+
+.ach-card.ach-unlocked:hover {
+    border-color: rgba(16, 185, 129, 0.8) !important;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.25) !important;
+}
+
+.ach-card.ach-locked {
+    opacity: 0.6 !important;
+}
+
+.ach-card.ach-locked:hover {
+    opacity: 0.85 !important;
+    border-color: rgba(179, 136, 255, 0.3) !important;
+}
+
+.ach-card-icon {
+    font-size: 1.8rem !important;
+    line-height: 1 !important;
+    margin-bottom: 2px !important;
+}
+
+.ach-card-name {
+    font-family: var(--font-head) !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.ach-card-desc {
+    font-family: var(--font-main) !important;
+    font-size: 0.8rem !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    line-height: 1.35 !important;
+}
+
+.ach-card-check {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    background: #10b981 !important;
+    color: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.75rem !important;
+    font-weight: 900 !important;
+}
+
+/* ── 12. SMOOTH CYBER SCROLLBARS ─────────────────────────── */
+::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(10, 7, 20, 0.6) !important;
+    border-radius: 6px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(179, 136, 255, 0.35) !important;
+    border-radius: 6px !important;
+    border: 2px solid rgba(10, 7, 20, 0.6) !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(179, 136, 255, 0.65) !important;
+}
+
+/* ── 13. ONBOARDING & ACTION BUTTONS ─────────────────────── */
+.btn-primary, .btn-secondary {
+    font-family: var(--font-main) !important;
+    font-weight: 600 !important;
+    font-size: 0.92rem !important;
+    padding: 10px 22px !important;
+    border-radius: 100px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #b388ff, #f48fb1) !important;
+    border: none !important;
+    color: #0b0717 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 20px rgba(179, 136, 255, 0.4) !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 0 32px rgba(179, 136, 255, 0.65) !important;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(179, 136, 255, 0.4) !important;
+    color: #fff !important;
+}
+
+

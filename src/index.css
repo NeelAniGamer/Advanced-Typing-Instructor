@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #07090e;
+  color: #f1f5f9;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+  user-select: none;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(0, 245, 255, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(179, 136, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.5) 0%, transparent 100%);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism Cards */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-interactive {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-panel-interactive:hover {
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: 0 12px 36px 0 rgba(0, 245, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Cyber Neon Glows */
+.text-glow-cyan {
+  text-shadow: 0 0 12px rgba(0, 245, 255, 0.65);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 12px rgba(179, 136, 255, 0.65);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 12px rgba(255, 213, 79, 0.65);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 12px rgba(57, 255, 20, 0.65);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 12px rgba(255, 23, 68, 0.65);
+}
+
+/* Caret Animation */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-caret {
+  animation: caretBlink 1s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 245, 255, 0.4);
+}

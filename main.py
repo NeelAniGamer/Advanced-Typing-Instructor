@@ -4,7 +4,7 @@ Advanced Typing Instructor — Native Desktop App v2.5
 Run:   python main.py
 Build: see build.bat / build.sh
 
-Requires:  pip install pywebview requests
+Requires:  pip install pywebview websockets requests
 Optional:  pip install pyinstaller
 """
 
@@ -30,7 +30,13 @@ except ImportError:
     print("=" * 60); print("  ERROR: pywebview not installed.  pip install pywebview"); print("=" * 60)
     input("Press Enter to exit..."); sys.exit(1)
 
-HAS_WEBSOCKETS = True
+try:
+    import websockets
+    from websockets.server import serve as ws_serve
+    HAS_WEBSOCKETS = True
+except ImportError:
+    HAS_WEBSOCKETS = False
+    print("[WS] websockets not installed — multiplayer disabled. pip install websockets")
 
 # ── Ports ─────────────────────────────────────────────────────
 def _free_port():
@@ -38,87 +44,8 @@ def _free_port():
         s.bind(('', 0)); return s.getsockname()[1]
 
 HTTP_PORT = _free_port()
-LAN_WS_PORT = _free_port()
-OAUTH_CALLBACK_PORT = _free_port()
-
-# ── LAN MULTIPLAYER ──────────────────────────────────────────
-import websockets
-
-lan_rooms = {} 
-lan_state = {} 
-
-async def lan_ws_handler(websocket):
-    room_code = None
-    try:
-        async for message in websocket:
-            data = json.loads(message)
-            action = data.get('action')
-            
-            if action == 'create_room':
-                room_code = str(random.randint(1000, 9999))
-                lan_rooms[room_code] = [websocket]
-                lan_state[room_code] = {'host': data.get('uid'), 'players': {data.get('uid'): data.get('profile')}, 'status': 'waiting'}
-                await websocket.send(json.dumps({'type': 'room_created', 'room': room_code}))
-            
-            elif action == 'join_room':
-                room_code = data.get('room')
-                if room_code in lan_rooms:
-                    lan_rooms[room_code].append(websocket)
-                    lan_state[room_code]['players'][data.get('uid')] = data.get('profile')
-                    await websocket.send(json.dumps({'type': 'joined', 'room': room_code}))
-                    for ws in lan_rooms[room_code]:
-                        await ws.send(json.dumps({'type': 'state_update', 'state': lan_state[room_code]}))
-                else:
-                    await websocket.send(json.dumps({'type': 'error', 'msg': 'Room not found'}))
-            
-            elif action == 'update_progress':
-                if room_code in lan_rooms:
-                    uid = data.get('uid')
-                    if uid in lan_state[room_code]['players']:
-                        lan_state[room_code]['players'][uid]['progress'] = data.get('progress')
-                    for ws in lan_rooms[room_code]:
-                        await ws.send(json.dumps({'type': 'state_update', 'state': lan_state[room_code]}))
-            
-            elif action == 'start_race':
-                if room_code in lan_rooms:
-                    lan_state[room_code]['status'] = 'playing'
-                    lan_state[room_code]['text'] = data.get('text')
-                    for ws in lan_rooms[room_code]:
-                        await ws.send(json.dumps({'type': 'race_started', 'text': data.get('text')}))
-    except:
-        pass
-    finally:
-        if room_code in lan_rooms and websocket in lan_rooms[room_code]:
-            lan_rooms[room_code].remove(websocket)
-            if len(lan_rooms[room_code]) == 0:
-                del lan_rooms[room_code]
-                del lan_state[room_code]
-
-async def lan_ws_server():
-    async with websockets.serve(lan_ws_handler, "0.0.0.0", LAN_WS_PORT):
-        await asyncio.Future()
-
-def run_lan_ws():
-    asyncio.run(lan_ws_server())
-
-threading.Thread(target=run_lan_ws, daemon=True).start()
-
-# UDP Discovery
-UDP_PORT = 19999
-def udp_discovery_listener():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(('', UDP_PORT))
-        while True:
-            data, addr = s.recvfrom(1024)
-            if data.decode() == 'DISCOVER_TYPING_SERVER':
-                response = f'TYPING_SERVER:{HTTP_PORT}:{LAN_WS_PORT}'
-                s.sendto(response.encode(), addr)
-    except Exception as e:
-        print("UDP Discovery Error:", e)
-
-threading.Thread(target=udp_discovery_listener, daemon=True).start()
+WS_PORT   = _free_port()
+OAUTH_CALLBACK_PORT = _free_port()   # picks a free random port at launch
 
 # ── REPLACE WITH YOUR REAL OAUTH VALUES ──────────────────────
 # Get them at https://console.cloud.google.com/apis/credentials
@@ -136,6 +63,306 @@ def data_path(*parts):
     return os.path.join(base, *parts)
 
 DB_PATH = data_path('typing_quest.db')
+
+# ═══════════════════════════════════════════════════════════════
+# MULTIPLAYER ROOM MANAGER
+# ═══════════════════════════════════════════════════════════════
+class RoomManager:
+    def __init__(self):
+        self.rooms   = {}   # code -> Room dict
+        self.clients = {}   # ws -> {room_code, player_id, name}
+        self._lock   = asyncio.Lock()
+
+    def _gen_code(self):
+        return ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=5))
+
+    def _get_local_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close(); return ip
+        except: return "127.0.0.1"
+
+    async def handle(self, ws):
+        player_id = str(uuid.uuid4())[:8]
+        self.clients[ws] = {'room_code': None, 'player_id': player_id, 'name': 'Player'}
+        try:
+            async for raw in ws:
+                try:
+                    msg = json.loads(raw)
+                    await self.dispatch(ws, player_id, msg)
+                except Exception as e:
+                    await self._send(ws, {'type': 'error', 'msg': str(e)})
+        except Exception:
+            pass
+        finally:
+            await self.on_disconnect(ws, player_id)
+
+    async def dispatch(self, ws, pid, msg):
+        t = msg.get('type', '')
+        if   t == 'create_room':  await self.create_room(ws, pid, msg)
+        elif t == 'join_room':    await self.join_room(ws, pid, msg)
+        elif t == 'leave_room':   await self.leave_room(ws, pid)
+        elif t == 'start_race':   await self.start_race(ws, pid)
+        elif t == 'progress':     await self.update_progress(ws, pid, msg)
+        elif t == 'finish':       await self.player_finish(ws, pid, msg)
+        elif t == 'chat':         await self.broadcast_chat(ws, pid, msg)
+        elif t == 'ready':        await self.set_ready(ws, pid, msg)
+        elif t == 'ping':         await self._send(ws, {'type':'pong','ts':time.time()})
+        elif t == 'list_rooms':   await self._send(ws, {'type':'rooms_list','rooms': self._public_rooms()})
+        elif t == 'admin_kick':   await self.admin_kick(ws, pid, msg)
+        elif t == 'sync_profile':
+            room = self._player_room(pid)
+            if room and pid in room['players']:
+                p = room['players'][pid]
+                p['name'] = msg.get('name', p['name'])[:20]
+                p['avatar'] = msg.get('avatar', p.get('avatar', '👑'))
+                p['level'] = int(msg.get('level', p.get('level', 1)))
+                p['rank'] = msg.get('rank', p.get('rank', 'Novice Typer'))
+                p['rank_color'] = msg.get('rank_color', p.get('rank_color', '#00f5ff'))
+                p['best_wpm'] = int(msg.get('best_wpm', p.get('best_wpm', 0)))
+                p['races_won'] = int(msg.get('races_won', p.get('races_won', 0)))
+                await self.broadcast_state(room)
+        elif t == 'set_name':
+            self.clients[ws]['name'] = msg.get('name','Player')[:20]
+            room = self._player_room(pid)
+            if room: room['players'][pid]['name'] = self.clients[ws]['name']; await self.broadcast_state(room)
+
+    # ── Room creation ──────────────────────────────────────────
+    async def create_room(self, ws, pid, msg):
+        async with self._lock:
+            code = self._gen_code()
+            name = self.clients[ws]['name'] = msg.get('name','Host')[:20]
+            text = msg.get('text', "The quick brown fox jumps over the lazy dog.")
+            mode = msg.get('mode', 'race')
+            self.rooms[code] = {
+                'code': code, 'host': pid, 'mode': mode,
+                'text': text, 'started': False, 'finished': False,
+                'max_players': int(msg.get('max_players', 8)),
+                'is_public': bool(msg.get('is_public', True)),
+                'created_at': time.time(), 'finish_order': [],
+                'players': {
+                    pid: {
+                        'id': pid, 'name': name,
+                        'avatar': msg.get('avatar', '👑'),
+                        'level': int(msg.get('level', 1)),
+                        'rank': msg.get('rank', 'Novice Typer'),
+                        'rank_color': msg.get('rank_color', '#00f5ff'),
+                        'best_wpm': int(msg.get('best_wpm', 0)),
+                        'races_won': int(msg.get('races_won', 0)),
+                        'progress': 0, 'wpm': 0, 'ready': False, 'finished': False, 'rank_position': 0, 'ws': ws
+                    }
+                }
+            }
+            self.clients[ws]['room_code'] = code
+        local_ip = self._get_local_ip()
+        await self._send(ws, {'type':'room_created','code':code,'host_ip':local_ip,'ws_port':WS_PORT,'text':text,'mode':mode})
+
+    # ── Join room ──────────────────────────────────────────────
+    async def join_room(self, ws, pid, msg):
+        code = msg.get('code','').upper().strip()
+        name = self.clients[ws]['name'] = msg.get('name','Player')[:20]
+        async with self._lock:
+            if code not in self.rooms:
+                await self._send(ws, {'type':'error','msg':'Room not found.'}); return
+            room = self.rooms[code]
+            if room['started']:
+                await self._send(ws, {'type':'error','msg':'Race already in progress.'}); return
+            if len(room['players']) >= room['max_players']:
+                await self._send(ws, {'type':'error','msg':'Room is full.'}); return
+            room['players'][pid] = {
+                'id': pid, 'name': name,
+                'avatar': msg.get('avatar', '⚡'),
+                'level': int(msg.get('level', 1)),
+                'rank': msg.get('rank', 'Novice Typer'),
+                'rank_color': msg.get('rank_color', '#00f5ff'),
+                'best_wpm': int(msg.get('best_wpm', 0)),
+                'races_won': int(msg.get('races_won', 0)),
+                'progress': 0, 'wpm': 0, 'ready': False, 'finished': False, 'rank_position': 0, 'ws': ws
+            }
+            self.clients[ws]['room_code'] = code
+        await self._send(ws, {'type':'room_joined','code':code,'text':room['text'],'mode':room['mode'],'host':room['host']})
+        await self.broadcast_state(room)
+
+    # ── Leave / disconnect ──────────────────────────────────────
+    async def leave_room(self, ws, pid):
+        room = self._player_room(pid)
+        if not room: return
+        async with self._lock:
+            room['players'].pop(pid, None)
+            if self.clients[ws]: self.clients[ws]['room_code'] = None
+            if not room['players']:
+                self.rooms.pop(room['code'], None); return
+            if room['host'] == pid and room['players']:
+                room['host'] = next(iter(room['players']))
+                new_host_ws = room['players'][room['host']]['ws']
+                await self._send(new_host_ws, {'type':'promoted_to_host'})
+        await self.broadcast_state(room)
+
+    async def on_disconnect(self, ws, pid):
+        await self.leave_room(ws, pid)
+        self.clients.pop(ws, None)
+
+    # ── Ready / Start ──────────────────────────────────────────
+    async def set_ready(self, ws, pid, msg):
+        room = self._player_room(pid)
+        if not room: return
+        room['players'][pid]['ready'] = msg.get('ready', True)
+        await self.broadcast_state(room)
+        # Auto-start if all ready and >= 2 players
+        all_ready = all(p['ready'] for p in room['players'].values())
+        if all_ready and len(room['players']) >= 2:
+            await self.start_race(ws, pid)
+
+    async def start_race(self, ws, pid):
+        room = self._player_room(pid)
+        if not room: return
+        if room['host'] != pid:
+            await self._send(ws, {'type':'error','msg':'Only the host can start.'}); return
+        if len(room['players']) < 1:
+            await self._send(ws, {'type':'error','msg':'Need at least 1 player.'}); return
+        room['started'] = True; room['start_time'] = time.time()
+        # 3-second countdown broadcast
+        for i in [3,2,1]:
+            await self.broadcast_to_room(room, {'type':'countdown','count':i})
+            await asyncio.sleep(1)
+        await self.broadcast_to_room(room, {'type':'race_start','text':room['text'],'start_time':time.time()})
+
+    # ── Progress / Finish ──────────────────────────────────────
+    async def update_progress(self, ws, pid, msg):
+        room = self._player_room(pid)
+        if not room or not room['started']: return
+        if pid in room['players']:
+            room['players'][pid]['progress'] = msg.get('progress', 0)
+            room['players'][pid]['wpm']      = msg.get('wpm', 0)
+        await self.broadcast_to_room(room, {
+            'type': 'progress_update',
+            'players': {
+                p['id']: {
+                    'id': p['id'],
+                    'name': p['name'],
+                    'avatar': p.get('avatar', '⌨️'),
+                    'progress': p['progress'],
+                    'wpm': p['wpm'],
+                    'finished': p['finished'],
+                    'rank_position': p.get('rank_position', 0)
+                } for p in room['players'].values()
+            }
+        })
+
+    async def player_finish(self, ws, pid, msg):
+        room = self._player_room(pid)
+        if not room: return
+        if pid in room['players'] and not room['players'][pid]['finished']:
+            room['players'][pid]['finished'] = True
+            rank = len(room['finish_order']) + 1
+            room['players'][pid]['rank_position'] = rank
+            room['finish_order'].append(pid)
+            elapsed = time.time() - room.get('start_time', time.time())
+            wpm = msg.get('wpm', 0)
+            await self.broadcast_to_room(room, {
+                'type':   'player_finished',
+                'id':     pid, 'name': room['players'][pid]['name'],
+                'avatar': room['players'][pid].get('avatar', '👑'),
+                'rank':   rank, 'wpm': wpm, 'time': round(elapsed, 2)
+            })
+            all_done = all(p['finished'] for p in room['players'].values())
+            if all_done:
+                await asyncio.sleep(2)
+                podium = [{
+                    'id': p['id'],
+                    'name': p['name'],
+                    'avatar': p.get('avatar', '👑'),
+                    'rank': p.get('rank_position', 1),
+                    'wpm': p['wpm'],
+                    'level': p.get('level', 1),
+                    'rank_tier': p.get('rank', 'Typer')
+                } for p in sorted(room['players'].values(), key=lambda x: x.get('rank_position', 999))]
+                await self.broadcast_to_room(room, {'type':'race_over','podium':podium})
+                room['started'] = False; room['finished'] = True
+                for p in room['players'].values():
+                    p['progress'] = 0; p['finished'] = False; p['rank_position'] = 0; p['ready'] = False
+                room['finish_order'] = []
+
+    # ── Chat ──────────────────────────────────────────────────
+    async def broadcast_chat(self, ws, pid, msg):
+        room = self._player_room(pid)
+        if not room: return
+        name = self.clients[ws].get('name','?')
+        avatar = room['players'][pid].get('avatar', '💬') if pid in room['players'] else '💬'
+        text = msg.get('text','')[:200]
+        await self.broadcast_to_room(room, {'type':'chat','sender':name,'avatar':avatar,'text':text,'ts':time.time()})
+
+    # ── Admin kick ────────────────────────────────────────────
+    async def admin_kick(self, ws, pid, msg):
+        room = self._player_room(pid)
+        if not room or room['host'] != pid: return
+        target = msg.get('target_id')
+        if target and target in room['players']:
+            target_ws = room['players'][target]['ws']
+            await self._send(target_ws, {'type':'kicked','msg':'You were removed by the host.'})
+            await self.leave_room(target_ws, target)
+
+    # ── Helpers ───────────────────────────────────────────────
+    async def broadcast_state(self, room):
+        await self.broadcast_to_room(room, {
+            'type': 'room_state',
+            'players': {
+                p['id']: {
+                    'id': p['id'],
+                    'name': p['name'],
+                    'avatar': p.get('avatar', '👑'),
+                    'level': p.get('level', 1),
+                    'rank': p.get('rank', 'Novice Typer'),
+                    'rank_color': p.get('rank_color', '#00f5ff'),
+                    'best_wpm': p.get('best_wpm', 0),
+                    'races_won': p.get('races_won', 0),
+                    'ready': p['ready'],
+                    'progress': p['progress'],
+                    'wpm': p['wpm'],
+                    'finished': p['finished']
+                } for p in room['players'].values()
+            },
+            'host': room['host'],
+            'started': room['started'],
+            'player_count': len(room['players']),
+            'text': room.get('text', '')
+        })
+
+    async def broadcast_to_room(self, room, payload):
+        dead = []
+        for p in list(room['players'].values()):
+            try: await self._send(p['ws'], payload)
+            except: dead.append(p['id'])
+        for d in dead: room['players'].pop(d, None)
+
+    async def _send(self, ws, payload):
+        try: await ws.send(json.dumps(payload))
+        except: pass
+
+    def _player_room(self, pid):
+        for room in self.rooms.values():
+            if pid in room['players']: return room
+        return None
+
+    def _public_rooms(self):
+        return [{'code':r['code'],'players':len(r['players']),'max':r['max_players'],'started':r['started'],'mode':r['mode']} for r in self.rooms.values() if r.get('is_public') and not r['finished']]
+
+
+ROOM_MANAGER = RoomManager()
+
+async def ws_main():
+    if not HAS_WEBSOCKETS: return
+    async with ws_serve(ROOM_MANAGER.handle, "0.0.0.0", WS_PORT):
+        print(f"[WebSocket] Multiplayer on port {WS_PORT}")
+        await asyncio.Future()  # run forever
+
+def run_ws_server():
+    if not HAS_WEBSOCKETS: return
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try: loop.run_until_complete(ws_main())
+    except Exception as e: print(f"[WS Error] {e}")
+
 
 # ═══════════════════════════════════════════════════════════════
 # TYPING GAME API
@@ -178,6 +405,7 @@ class TypingGameAPI:
             c.execute('''CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT, created DATETIME DEFAULT CURRENT_TIMESTAMP, active INTEGER DEFAULT 1)''')
             c.execute('''CREATE TABLE IF NOT EXISTS tournament (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, text TEXT, start_time DATETIME, end_time DATETIME, active INTEGER DEFAULT 1)''')
             c.execute('''CREATE TABLE IF NOT EXISTS tournament_scores (id INTEGER PRIMARY KEY AUTOINCREMENT, tournament_id INTEGER, player_name TEXT, wpm INTEGER, accuracy INTEGER, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+            c.execute('''CREATE TABLE IF NOT EXISTS multiplayer_profiles (id TEXT PRIMARY KEY, name TEXT, avatar TEXT, level INTEGER DEFAULT 1, rank TEXT DEFAULT 'Rubber Dome Typer Trainee I', rank_color TEXT DEFAULT '#a1887f', races INTEGER DEFAULT 0, wins INTEGER DEFAULT 0, best_wpm INTEGER DEFAULT 0, avg_acc INTEGER DEFAULT 100, last_active DATETIME DEFAULT CURRENT_TIMESTAMP)''')
             conn.commit()
         except Exception as e: print(f"DB init: {e}")
         finally:
@@ -355,6 +583,73 @@ class TypingGameAPI:
             conn=sqlite3.connect(DB_PATH); conn.cursor().execute('INSERT OR REPLACE INTO progress (id,progress_json) VALUES (1,?)',(progress_json,)); conn.commit()
             return json.dumps({'status':'success'})
         except Exception as e: return json.dumps({'status':'error','msg':str(e)})
+        finally:
+            try: conn.close()
+            except: pass
+
+    def get_profile(self, pid='player_default'):
+        try:
+            conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+            row = c.execute('SELECT id, name, avatar, level, rank, rank_color, races, wins, best_wpm, avg_acc FROM multiplayer_profiles WHERE id=?', (pid,)).fetchone()
+            if row:
+                return json.dumps({
+                    'id': row[0], 'name': row[1], 'avatar': row[2], 'level': row[3],
+                    'rank': row[4], 'rank_color': row[5], 'races': row[6], 'wins': row[7],
+                    'best_wpm': row[8], 'avg_acc': row[9], 'status': 'success'
+                })
+            # Seed default if not exists
+            c.execute('INSERT OR REPLACE INTO multiplayer_profiles (id, name, avatar, level, rank, rank_color, races, wins, best_wpm, avg_acc) VALUES (?, ?, ?, 1, "Rubber Dome Typer Trainee I", "#a1887f", 0, 0, 0, 100)',
+                      (pid, 'Champion Typer', '👑'))
+            conn.commit()
+            return json.dumps({
+                'id': pid, 'name': 'Champion Typer', 'avatar': '👑', 'level': 1,
+                'rank': 'Rubber Dome Typer Trainee I', 'rank_color': '#a1887f',
+                'races': 0, 'wins': 0, 'best_wpm': 0, 'avg_acc': 100, 'status': 'success'
+            })
+        except Exception as e:
+            return json.dumps({'status': 'error', 'msg': str(e)})
+        finally:
+            try: conn.close()
+            except: pass
+
+    def update_profile(self, pid, name, avatar, level=1, rank='', rank_color=''):
+        try:
+            conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+            c.execute('''INSERT INTO multiplayer_profiles (id, name, avatar, level, rank, rank_color)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(id) DO UPDATE SET
+                         name=excluded.name,
+                         avatar=excluded.avatar,
+                         level=CASE WHEN excluded.level > level THEN excluded.level ELSE level END,
+                         rank=COALESCE(NULLIF(excluded.rank, ""), rank),
+                         rank_color=COALESCE(NULLIF(excluded.rank_color, ""), rank_color),
+                         last_active=CURRENT_TIMESTAMP''',
+                      (pid, name, avatar, level, rank, rank_color))
+            conn.commit()
+            return json.dumps({'status': 'success'})
+        except Exception as e:
+            return json.dumps({'status': 'error', 'msg': str(e)})
+        finally:
+            try: conn.close()
+            except: pass
+
+    def record_mp_race(self, pid, won, wpm, acc):
+        try:
+            conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+            is_win = 1 if str(won).lower() in ('true', '1') else 0
+            wpm_val = int(wpm)
+            acc_val = int(acc)
+            c.execute('''UPDATE multiplayer_profiles
+                         SET races = races + 1,
+                             wins = wins + ?,
+                             best_wpm = MAX(best_wpm, ?),
+                             avg_acc = (avg_acc + ?) / 2,
+                             last_active = CURRENT_TIMESTAMP
+                         WHERE id = ?''', (is_win, wpm_val, acc_val, pid))
+            conn.commit()
+            return json.dumps({'status': 'success'})
+        except Exception as e:
+            return json.dumps({'status': 'error', 'msg': str(e)})
         finally:
             try: conn.close()
             except: pass
@@ -566,9 +861,238 @@ OAUTH = OAuthManager()
 
 
 # ═══════════════════════════════════════════════════════════════
+# AUTO-UPDATE MANAGER
+# ═══════════════════════════════════════════════════════════════
+CURRENT_VERSION = "2.5.0"
+DEFAULT_UPDATE_URL = "https://advancedlogiclabs.dpdns.org/ati-version.json"
+LOCAL_DEV_VERCEL_PATH = r"c:\Users\neelg\OneDrive\Desktop\Vercel\ati-version.json"
+
+class UpdateManager:
+    """Handles checking remote version manifest, streaming download of updates, and seamless restart."""
+
+    def __init__(self):
+        self.state = {
+            'status': 'idle',        # idle | checking | update_available | no_update | downloading | ready | error
+            'current_version': CURRENT_VERSION,
+            'remote_version': None,
+            'release_date': None,
+            'changelog': None,
+            'download_url': None,
+            'exe_url': None,
+            'progress': 0,           # 0 - 100
+            'downloaded_bytes': 0,
+            'total_bytes': 0,
+            'speed_kbps': 0,
+            'error': None,
+            'staged_file': None,
+            'is_mandatory': False
+        }
+        self._lock = threading.Lock()
+        self._download_thread = None
+
+    def _is_newer(self, remote_ver, local_ver):
+        try:
+            r_parts = [int(x) for x in re.findall(r'\d+', str(remote_ver))]
+            l_parts = [int(x) for x in re.findall(r'\d+', str(local_ver))]
+            while len(r_parts) < 3: r_parts.append(0)
+            while len(l_parts) < 3: l_parts.append(0)
+            return r_parts > l_parts
+        except Exception:
+            return False
+
+    def check_update(self, manifest_url=None):
+        url = manifest_url or DEFAULT_UPDATE_URL
+        with self._lock:
+            self.state['status'] = 'checking'
+            self.state['error'] = None
+
+        manifest_data = None
+
+        # 1. Try remote fetch
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': f'ATI-Desktop/{CURRENT_VERSION}'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                manifest_data = json.loads(resp.read().decode('utf-8'))
+        except Exception as net_err:
+            # 2. Fallback to local Vercel manifest if network/host is offline
+            try:
+                if os.path.isfile(LOCAL_DEV_VERCEL_PATH):
+                    with open(LOCAL_DEV_VERCEL_PATH, 'r', encoding='utf-8') as f:
+                        manifest_data = json.load(f)
+            except Exception:
+                pass
+
+        with self._lock:
+            if not manifest_data:
+                self.state['status'] = 'error'
+                self.state['error'] = 'Could not reach update server'
+                return json.dumps(self.state)
+
+            remote_ver = manifest_data.get('version', '')
+            self.state['remote_version'] = remote_ver
+            self.state['release_date'] = manifest_data.get('releaseDate', '')
+            self.state['changelog'] = manifest_data.get('changelog', '')
+            self.state['download_url'] = manifest_data.get('downloadUrl', '')
+            self.state['exe_url'] = manifest_data.get('exeUrl', '')
+            self.state['is_mandatory'] = manifest_data.get('mandatory', False)
+
+            if self._is_newer(remote_ver, CURRENT_VERSION):
+                self.state['status'] = 'update_available'
+            else:
+                self.state['status'] = 'no_update'
+
+            return json.dumps(self.state)
+
+    def start_download(self, override_url=None):
+        with self._lock:
+            if self.state['status'] == 'downloading':
+                return json.dumps(self.state)
+
+            target_url = override_url or self.state.get('download_url') or self.state.get('exe_url')
+            if not target_url:
+                self.state['status'] = 'error'
+                self.state['error'] = 'No download URL available'
+                return json.dumps(self.state)
+
+            self.state['status'] = 'downloading'
+            self.state['progress'] = 0
+            self.state['downloaded_bytes'] = 0
+            self.state['total_bytes'] = 0
+            self.state['speed_kbps'] = 0
+            self.state['error'] = None
+
+            self._download_thread = threading.Thread(target=self._download_worker, args=(target_url,), daemon=True)
+            self._download_thread.start()
+            return json.dumps(self.state)
+
+    def _download_worker(self, url):
+        updates_dir = data_path('updates')
+        try:
+            os.makedirs(updates_dir, exist_ok=True)
+        except Exception:
+            pass
+
+        filename = os.path.basename(urlparse(url).path) or 'AdvancedTypingInstructor_latest.exe'
+        if not filename.endswith('.exe'):
+            filename += '.exe'
+        target_file = os.path.join(updates_dir, filename)
+
+        # Fast-track if already present in local Vercel folder
+        vercel_file = os.path.join(r"c:\Users\neelg\OneDrive\Desktop\Vercel", filename)
+        if os.path.isfile(vercel_file) and not url.startswith('http://localhost'):
+            try:
+                total_size = os.path.getsize(vercel_file)
+                with self._lock:
+                    self.state['total_bytes'] = total_size
+                chunk = 1024 * 512
+                copied = 0
+                with open(vercel_file, 'rb') as src, open(target_file, 'wb') as dst:
+                    while True:
+                        buf = src.read(chunk)
+                        if not buf: break
+                        dst.write(buf)
+                        copied += len(buf)
+                        with self._lock:
+                            self.state['downloaded_bytes'] = copied
+                            self.state['progress'] = min(99, int((copied / total_size) * 100))
+                        time.sleep(0.02)
+                with self._lock:
+                    self.state['status'] = 'ready'
+                    self.state['progress'] = 100
+                    self.state['staged_file'] = target_file
+                return
+            except Exception as e:
+                print(f"[Update] Local copy error: {e}")
+
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': f'ATI-Desktop/{CURRENT_VERSION}'})
+            start_time = time.time()
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                total_bytes = int(resp.headers.get('Content-Length', 0))
+                with self._lock:
+                    self.state['total_bytes'] = total_bytes
+
+                downloaded = 0
+                chunk_size = 65536
+                with open(target_file, 'wb') as f:
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        elapsed = time.time() - start_time
+                        speed = int((downloaded / 1024) / max(elapsed, 0.1))
+                        with self._lock:
+                            self.state['downloaded_bytes'] = downloaded
+                            self.state['speed_kbps'] = speed
+                            if total_bytes > 0:
+                                self.state['progress'] = min(99, int((downloaded / total_bytes) * 100))
+                            else:
+                                self.state['progress'] = 50
+
+            with self._lock:
+                self.state['status'] = 'ready'
+                self.state['progress'] = 100
+                self.state['staged_file'] = target_file
+        except Exception as e:
+            with self._lock:
+                self.state['status'] = 'error'
+                self.state['error'] = str(e)
+
+    def get_progress(self):
+        with self._lock:
+            return json.dumps(self.state)
+
+    def apply_update(self):
+        with self._lock:
+            staged = self.state.get('staged_file')
+            if not staged or not os.path.isfile(staged):
+                return json.dumps({'status': 'error', 'msg': 'No staged update file found'})
+
+        is_installer = staged.lower().endswith('_setup.exe') or 'setup' in staged.lower()
+        is_frozen = getattr(sys, 'frozen', False)
+        current_exe = sys.executable if is_frozen else os.path.abspath('AdvancedTypingInstructor.exe')
+
+        if is_installer:
+            import subprocess
+            subprocess.Popen([staged], shell=True)
+            threading.Timer(1.0, lambda: os._exit(0)).start()
+            return json.dumps({'status': 'launching_installer'})
+
+        bat_file = os.path.join(data_path('updates'), 'apply_update.bat')
+        bat_content = f'''@echo off
+timeout /t 2 /nobreak >nul
+copy /y "{staged}" "{current_exe}" >nul
+del /f /q "{staged}" >nul
+start "" "{current_exe}"
+del /f /q "%~f0" >nul
+'''
+        try:
+            with open(bat_file, 'w', encoding='ascii') as f:
+                f.write(bat_content)
+            import subprocess
+            creation_flags = 0
+            if sys.platform == 'win32':
+                creation_flags = subprocess.CREATE_NO_WINDOW | getattr(subprocess, 'DETACHED_PROCESS', 0x00000008)
+            subprocess.Popen(['cmd.exe', '/c', bat_file], creationflags=creation_flags, close_fds=True)
+            threading.Timer(1.0, lambda: os._exit(0)).start()
+            return json.dumps({'status': 'applying_and_restarting'})
+        except Exception as e:
+            return json.dumps({'status': 'error', 'msg': str(e)})
+
+UPDATER = UpdateManager()
+
+
+
+# ═══════════════════════════════════════════════════════════════
 # HTTP SERVER
 # ═══════════════════════════════════════════════════════════════
-MIME = {'html':'text/html; charset=utf-8','css':'text/css','js':'application/javascript','png':'image/png','jpg':'image/jpeg','ico':'image/x-icon','svg':'image/svg+xml','woff2':'font/woff2'}
+MIME = {
+    'html':'text/html; charset=utf-8','css':'text/css','js':'application/javascript',
+    'png':'image/png','jpg':'image/jpeg','ico':'image/x-icon','svg':'image/svg+xml',
+    'woff2':'font/woff2','json':'application/json','webp':'image/webp'
+}
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_): pass
@@ -587,7 +1111,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path=='/api/savequests':       API.savequestdata(p.get('category',['Literature'])[0],p.get('data',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
         elif path=='/api/getprogress':      self._send(200,'text/plain',API.getprogress().encode())
         elif path=='/api/saveprogress':     API.saveprogress(p.get('data',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
-        
+        elif path=='/api/ws_port':          self._send(200,'application/json',json.dumps({'port':WS_PORT,'available':HAS_WEBSOCKETS}).encode())
         elif path=='/api/daily':            self._send(200,'application/json',API.get_daily_challenge().encode())
         elif path=='/api/announcements':    self._send(200,'application/json',API.get_announcements().encode())
         elif path=='/api/post_announcement':API.post_announcement(p.get('msg',[''])[0]); self._send(200,'application/json',b'{"status":"success"}')
@@ -599,40 +1123,26 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("8.8.8.8",80)); ip=s.getsockname()[0]; s.close()
             except: ip="127.0.0.1"
-            self._send(200,'application/json',json.dumps({'ip':ip}).encode())
+            self._send(200,'application/json',json.dumps({'ip':ip,'ws_port':WS_PORT}).encode())
+        elif path=='/api/get_profile':
+            pid = p.get('id', ['player_default'])[0]
+            self._send(200, 'application/json', API.get_profile(pid).encode())
+        elif path=='/api/update_profile':
+            pid = p.get('id', ['player_default'])[0]
+            name = p.get('name', ['Champion Typer'])[0]
+            avatar = p.get('avatar', ['👑'])[0]
+            lvl = int(p.get('level', ['1'])[0])
+            rank = p.get('rank', [''])[0]
+            rank_color = p.get('rank_color', [''])[0]
+            self._send(200, 'application/json', API.update_profile(pid, name, avatar, lvl, rank, rank_color).encode())
+        elif path=='/api/record_mp_race':
+            pid = p.get('id', ['player_default'])[0]
+            won = p.get('won', ['0'])[0]
+            wpm = p.get('wpm', ['0'])[0]
+            acc = p.get('acc', ['100'])[0]
+            self._send(200, 'application/json', API.record_mp_race(pid, won, wpm, acc).encode())
             
         # ── OAUTH ROUTES ───────────────────────────────────────────
-        elif path == '/api/lan_discover':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'ws_port': LAN_WS_PORT}).encode())
-        elif path == '/api/admin/add_quest':
-            content_length = int(self.headers.get('Content-Length', 0))
-            if content_length:
-                body = self.rfile.read(content_length)
-                quest_data = json.loads(body)
-                cat = quest_data.get('category', 'daily')
-                
-                conn = sqlite3.connect(DB_PATH)
-                c = conn.cursor()
-                c.execute("SELECT quest_json FROM quests WHERE category=?", (cat,))
-                row = c.fetchone()
-                
-                quests_arr = []
-                if row and row[0]:
-                    try:
-                        quests_arr = json.loads(row[0])
-                    except: pass
-                
-                quests_arr.append(quest_data)
-                
-                c.execute("INSERT OR REPLACE INTO quests (category, quest_json, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)", (cat, json.dumps(quests_arr)))
-                conn.commit()
-                conn.close()
-                self._send(200, 'application/json', b'{"status": "success"}')
-            else:
-                self._send(400, 'application/json', b'{"status": "error"}')
         elif path == '/api/google_login':
             result = OAUTH.begin_login()
             self._send(200, 'application/json', json.dumps(result).encode())
@@ -642,14 +1152,35 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, 'application/json', OAUTH.get_current_user().encode())
         elif path == '/api/google_logout':
             self._send(200, 'application/json', OAUTH.logout().encode())
+        # ── AUTO-UPDATE ROUTES ─────────────────────────────────────
+        elif path == '/api/check_update':
+            manifest_url = p.get('url', [None])[0]
+            self._send(200, 'application/json', UPDATER.check_update(manifest_url).encode())
+        elif path == '/api/download_update':
+            target_url = p.get('url', [None])[0]
+            self._send(200, 'application/json', UPDATER.start_download(target_url).encode())
+        elif path == '/api/update_progress':
+            self._send(200, 'application/json', UPDATER.get_progress().encode())
+        elif path == '/api/apply_update':
+            self._send(200, 'application/json', UPDATER.apply_update().encode())
         # ───────────────────────────────────────────────────────────
         else:
-            rel='index.html' if path in ('/','','/index.html') else path.lstrip('/')
-            fp=resource_path(rel)
+            rel = 'index.html' if path in ('/','','/index.html') else path.lstrip('/')
+            # Check dist/ first (modern Vite bundle), then root
+            dist_fp = resource_path('dist', rel)
+            root_fp = resource_path(rel)
+            fp = dist_fp if os.path.isfile(dist_fp) else root_fp
+
             if os.path.isfile(fp):
-                ext=os.path.splitext(fp)[1].lstrip('.')
-                with open(fp,'rb') as f: self._send(200,MIME.get(ext,'application/octet-stream'),f.read())
-            else: self._send(404,'text/plain',b'404 Not Found')
+                ext = os.path.splitext(fp)[1].lstrip('.')
+                with open(fp, 'rb') as f: self._send(200, MIME.get(ext, 'application/octet-stream'), f.read())
+            else:
+                # SPA fallback to dist/index.html
+                dist_index = resource_path('dist', 'index.html')
+                if os.path.isfile(dist_index):
+                    with open(dist_index, 'rb') as f: self._send(200, MIME['html'], f.read())
+                else:
+                    self._send(404, 'text/plain', b'404 Not Found')
 
 
 def _run_http():
@@ -657,12 +1188,17 @@ def _run_http():
 
 if __name__ == '__main__':
     threading.Thread(target=_run_http, daemon=True).start()
+    if HAS_WEBSOCKETS:
+        threading.Thread(target=run_ws_server, daemon=True).start()
     print(f"[HTTP] http://127.0.0.1:{HTTP_PORT}")
+    print(f"[WS]   ws://0.0.0.0:{WS_PORT}")
 
+    is_dev = '--dev' in sys.argv
+    start_url = 'http://localhost:5173' if is_dev else f'http://127.0.0.1:{HTTP_PORT}/'
 
     window = webview.create_window(
-        title='Advanced Typing Instructor',
-        url=f'http://127.0.0.1:{HTTP_PORT}/',
+        title='Advanced Typing Instructor — Cyber-Mechanical Edition',
+        url=start_url,
         width=1440, height=900, resizable=True, min_size=(900,600),
     )
     
