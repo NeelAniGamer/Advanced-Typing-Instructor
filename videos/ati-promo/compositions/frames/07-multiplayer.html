@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Inter', -apple-system, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: #1a1a2e;
+      }
+      .header-wrap {
+        position: absolute;
+        top: 130px;
+        left: 80px;
+        right: 80px;
+        text-align: center;
+        z-index: 20;
+      }
+      .network-pill {
+        display: inline-block;
+        padding: 10px 24px;
+        background: rgba(0, 180, 216, 0.2);
+        border: 2px solid #00B4D8;
+        border-radius: 100px;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 4px;
+        color: #00B4D8;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+      }
+      .headline {
+        font-size: 80px;
+        font-weight: 900;
+        color: #f5f0e8;
+        line-height: 0.95;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+      }
+      /* Simulated Live Racing Bar */
+      .racing-stage {
+        position: absolute;
+        top: 360px;
+        left: 80px;
+        right: 80px;
+        background: #252542;
+        border: 3px solid #FF5E5B;
+        border-radius: 24px;
+        padding: 36px 40px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        z-index: 15;
+      }
+      .racer-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .racer-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 24px;
+        font-weight: 800;
+        color: #f5f0e8;
+      }
+      .track-groove {
+        height: 28px;
+        background: rgba(0,0,0,0.4);
+        border-radius: 14px;
+        overflow: hidden;
+        position: relative;
+      }
+      .track-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 0%;
+        border-radius: 14px;
+        will-change: width;
+      }
+      .fill-you {
+        background: linear-gradient(90deg, #FF5E5B, #FFBE0B);
+        box-shadow: 0 0 20px rgba(255, 94, 91, 0.8);
+      }
+      .fill-rival {
+        background: #6c5b7b;
+      }
+      .screen-card {
+        position: absolute;
+        bottom: 90px;
+        left: 60px;
+        right: 60px;
+        height: 980px;
+        border-radius: 28px;
+        overflow: hidden;
+        border: 4px solid #00B4D8;
+        box-shadow: 0 30px 90px rgba(0,0,0,0.8);
+        z-index: 10;
+        background: #0f101a;
+      }
+      .screen-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top center;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="07-multiplayer"
+      data-start="0"
+      data-duration="3.6"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="bg-07" class="clip bg-layer" data-start="0" data-duration="3.6" data-track-index="0"></div>
+
+      <div id="header-07" class="clip header-wrap" data-start="0" data-duration="3.6" data-track-index="1">
+        <div id="badge" class="network-pill">⚡ LOW-LATENCY WEBSOCKETS</div>
+        <div id="title" class="headline">RACE ANYONE.<br><span style="color: #FF5E5B;">REAL-TIME.</span></div>
+      </div>
+
+      <div id="race-stage" class="clip racing-stage" data-start="0" data-duration="3.6" data-track-index="2">
+        <div class="racer-row">
+          <div class="racer-meta">
+            <span>YOU (CHAMPION)</span>
+            <span style="color: #FFBE0B;">142 WPM 🥇</span>
+          </div>
+          <div class="track-groove">
+            <div id="p1-fill" class="track-fill fill-you"></div>
+          </div>
+        </div>
+
+        <div class="racer-row">
+          <div class="racer-meta">
+            <span style="color: #8A9490;">GLOBAL CHALLENGER</span>
+            <span style="color: #8A9490;">124 WPM 🥈</span>
+          </div>
+          <div class="track-groove">
+            <div id="p2-fill" class="track-fill fill-rival"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="screen" class="clip screen-card" data-start="0" data-duration="3.6" data-track-index="3">
+        <img class="screen-img" src="assets/ati-multiplayer.png" alt="ATI Multiplayer Lobby" />
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#badge",
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        0.05
+      );
+      tl.fromTo("#title",
+        { opacity: 0, scale: 0.9, y: 30 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.5, ease: "back.out(1.5)" },
+        0.15
+      );
+
+      tl.fromTo("#race-stage",
+        { opacity: 0, y: -40 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.3
+      );
+
+      // Race progress bar speed burst
+      tl.fromTo("#p1-fill",
+        { width: "0%" },
+        { width: "95%", duration: 1.8, ease: "power2.out" },
+        0.5
+      );
+      tl.fromTo("#p2-fill",
+        { width: "0%" },
+        { width: "78%", duration: 1.8, ease: "power1.out" },
+        0.5
+      );
+
+      tl.fromTo("#screen",
+        { opacity: 0, y: 80, scale: 0.92 },
+        { opacity: 1, y: 0, scale: 1.0, duration: 0.8, ease: "power3.out" },
+        0.5
+      );
+
+      window.__timelines["07-multiplayer"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

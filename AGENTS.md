@@ -17,7 +17,7 @@ Single entry point exposing several classes:
 - **`Handler`** — HTTP request handler serving static files and the `/api/...` REST endpoints.
 - **`TypingGameAPI`** — core game/API layer: reads/writes the SQLite database `typing_quest.db`, pulls word batches from Wikipedia, manages daily challenges and tournament state.
 - **`OAuthManager`** — Google OAuth2 (PKCE) sign-in: opens the system browser and listens for the callback on a random local port.
-- **`RoomManager`** — WebSocket-based multiplayer race rooms (room creation, player join, live race progress broadcast, results).
+- **`RoomManager`** — WebSocket-based multiplayer race rooms (room creation, player join, live race progress broadcast, results). Race text supports all 5 curriculum formats; text clamp is 6000 chars. Test with `python verify_multiplayer.py`.
 - **`UpdateManager`** — Over-the-air auto-updater: checks remote manifest (`ati-version.json`), streams binary payloads with speed/byte telemetry, and executes detached in-place executable replacement and restart.
 - **Inno Setup Installer:** `Advanced Typing Instructor.iss` compiles into `Output\AdvancedTypingInstructor_Setup.exe` via Inno Setup 6 (`ISCC.exe`).
 - **Site Distribution:** `c:\Users\neelg\OneDrive\Desktop\Vercel` hosts `ati-version.json`, `AdvancedTypingInstructor_Setup.exe`, and `AdvancedTypingInstructor.exe`.

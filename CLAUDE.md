@@ -53,7 +53,9 @@ The backend is a single Python file that coordinates several systems:
 - **Cloud Sync:** Firebase integration (`firebase_config.js`, `firebase_mp.js`) provides optional cloud saves and multiplayer capabilities.
 
 ## Key Implementation Details
-- **Multiplayer:** Uses a room-code system. The host's local IP is shared with clients to connect to the WebSocket server.
+- **Multiplayer:** Uses a room-code system. The host's local IP is shared with clients to connect to the WebSocket server. Race text now supports all 5 curriculum formats (Words/Lines/Paragraphs/Pages/Code); `RoomManager` text clamp is 6000 chars. Automated end-to-end test: `python verify_multiplayer.py` (11 checks, real WS server + 2 clients).
+- **Default typing style:** `sentence_case` (normal English) everywhere — store default, backend `standard_prose` default, `TypingStyleEngine.transform_text` normalizes to sentence case. Title Case remains as an opt-in Shift-key drill.
+- **Drill formats:** Shared `src/components/Common/ModeSelector.tsx` picker used by Multiplayer (race format), AI Words prompt (session format), Daily Challenge (words/sentences/paragraphs/pages/code). AI synthesis covers Words/Lines/Paragraphs (`/api/generate_ai_words?format=`); Pages/Code use curated curriculum.
 - **Content Generation:** The `TypingGameAPI` fetches random Wikipedia summaries to generate dynamic typing text for different difficulties.
 - **Auth Flow:** Google Login $\rightarrow$ System Browser $\rightarrow$ Local Callback $\rightarrow$ Backend $\rightarrow$ Frontend `receiveGoogleUser()` call.
 - **Scaling:** The app uses `resource_path()` for PyInstaller compatibility (handling `_MEIPASS`).

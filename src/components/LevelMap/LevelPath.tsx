@@ -15,10 +15,16 @@ import {
   Code2, 
   X,
   Flame,
-  Clock
+  Clock,
+  Type,
+  AlignLeft,
+  FileText,
+  Key,
+  ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TypingMode, Difficulty, Category } from '../../types/game';
+import { LEVEL_THEMES } from '../../data/levelCurriculum';
 
 export const LevelPath: React.FC = () => {
   const { 
@@ -28,12 +34,19 @@ export const LevelPath: React.FC = () => {
     difficulty, 
     category,
     user,
+    inventory,
+    useQuantumLeapToken,
     setLevel, 
     setMode, 
     setDifficulty, 
     setCategory, 
-    setScreen 
+    setScreen,
+    fetchNewBatch,
+    requestLaunchSession,
+    uiTheme
   } = useGameStore();
+
+  const isOrganicLight = uiTheme === 'organic';
 
   const [currentChapter, setCurrentChapter] = useState(Math.floor((level - 1) / 40));
   const [briefingLevel, setBriefingLevel] = useState<number | null>(null);
@@ -53,12 +66,15 @@ export const LevelPath: React.FC = () => {
   const handleSelectLevel = (lvl: number) => {
     if (lvl <= unlockedLevels + 1) {
       setBriefingLevel(lvl);
+    } else if (lvl === unlockedLevels + 2 && (inventory['token-quantum-leap'] || 0) > 0) {
+      if (window.confirm(`Use 1 Quantum Leap Key to immediately unlock Level ${lvl}?`)) {
+        useQuantumLeapToken();
+      }
     }
   };
 
   const handleLaunchMission = (lvl: number) => {
-    setLevel(lvl);
-    setScreen('game');
+    requestLaunchSession(lvl);
   };
 
   const targetWpm = briefingLevel ? Math.round(25 + briefingLevel * 0.45) : 30;
@@ -66,28 +82,42 @@ export const LevelPath: React.FC = () => {
   const isBossMission = briefingLevel ? briefingLevel % 40 === 0 : false;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6 relative">
+    <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-8 xl:px-12 py-6 sm:py-8 flex flex-col gap-6 relative">
       
       {/* Quick Resume Adventure Banner */}
-      <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_30px_rgba(0,245,255,0.08)] flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/30">
+      <div className={`glass-panel p-5 sm:p-6 rounded-3xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+        isOrganicLight
+          ? 'bg-white border-[#E8E4DC] shadow-sm'
+          : 'border-cyan-500/30 shadow-[0_0_30px_rgba(0,245,255,0.08)] bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/30'
+      }`}>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-3xl shadow-neon-cyan flex-shrink-0">
+          <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center text-3xl flex-shrink-0 ${
+            isOrganicLight
+              ? 'bg-[#7C8D81]/15 border-[#7C8D81]/30 shadow-sm'
+              : 'bg-cyan-500/20 border-cyan-400/50 shadow-neon-cyan'
+          }`}>
             {level % 40 === 0 ? '☠️' : '🚀'}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold">
+              <span className={`text-xs font-mono uppercase tracking-widest font-bold ${
+                isOrganicLight ? 'text-[#7C8D81]' : 'text-cyan-400'
+              }`}>
                 Current Standby Mission
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                isOrganicLight ? 'bg-[#7C8D81]/20 text-[#245041]' : 'bg-cyan-500/20 text-cyan-300'
+              }`}>
                 Level {level}
               </span>
             </div>
-            <h3 className="font-display font-black text-xl text-white mt-0.5">
-              {level % 40 === 0 ? `Boss Battle: ${activeChap.bossName}` : `Sector Mission ${level}: Touch Actuation`}
+            <h3 className={`font-display font-black text-xl mt-0.5 ${
+              isOrganicLight ? 'text-[#1C221F]' : 'text-white'
+            }`}>
+              {level % 40 === 0 ? `Boss Battle: ${activeChap.bossName}` : `Sector Mission ${level}: ${LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length]}`}
             </h3>
-            <p className="text-xs text-slate-400">
-              Highest Career Velocity: <span className="text-cyan-300 font-mono font-bold">{user.best_wpm || 0} WPM</span> • Unlocked: {unlockedLevels}/200
+            <p className={`text-xs ${isOrganicLight ? 'text-[#616C66]' : 'text-slate-400'}`}>
+              Highest Career Velocity: <span className={`font-mono font-bold ${isOrganicLight ? 'text-[#245041]' : 'text-cyan-300'}`}>{user.best_wpm || 0} WPM</span> • Unlocked: {unlockedLevels}/200
             </p>
           </div>
         </div>
@@ -101,16 +131,61 @@ export const LevelPath: React.FC = () => {
         </button>
       </div>
 
+      {/* Quantum Leap Key Action Banner */}
+      {inventory['token-quantum-leap'] > 0 && unlockedLevels < 200 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-purple-950/30 border border-amber-500/40 shadow-neon-amber/20 gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-xl shrink-0">
+              🗝️
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-300 flex items-center gap-2">
+                <span>Quantum Leap Key Ready</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 font-mono">
+                  {inventory['token-quantum-leap']} Available
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Consume 1 token to bypass prerequisites and immediately unlock Level {unlockedLevels + 2}.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => useQuantumLeapToken()}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono text-xs font-black shadow-neon-amber transition-all flex items-center justify-center gap-1.5"
+            >
+              <span>Unlock Level {unlockedLevels + 2}</span>
+              <span>⚡</span>
+            </button>
+            <button
+              onClick={() => setScreen('shop')}
+              className="p-2 rounded-xl bg-slate-900 border border-white/10 text-slate-400 hover:text-white"
+              title="Shop Armory"
+            >
+              <ShoppingBag className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Chapter Navigation Header */}
-      <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className={`glass-panel p-6 rounded-3xl border flex flex-col md:flex-row items-center justify-between gap-4 ${
+        isOrganicLight ? 'bg-white border-[#E8E4DC] shadow-sm' : 'border-white/10'
+      }`}>
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">
+          <span className={`text-xs font-bold uppercase tracking-widest ${
+            isOrganicLight ? 'text-[#7C8D81]' : 'text-cyan-400'
+          }`}>
             Adventure Progression
           </span>
-          <h2 className="font-display font-extrabold text-2xl text-white mt-1">
+          <h2 className={`font-display font-extrabold text-2xl mt-1 ${
+            isOrganicLight ? 'text-[#1C221F]' : 'text-white'
+          }`}>
             {activeChap.title}
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className={`text-xs mt-0.5 ${isOrganicLight ? 'text-[#616C66]' : 'text-slate-400'}`}>
             Levels {startLvl} – {endLvl} • Chapter Boss: <span className="text-red-400 font-semibold">{activeChap.bossName}</span>
           </p>
         </div>
@@ -120,7 +195,11 @@ export const LevelPath: React.FC = () => {
           <button
             onClick={() => setCurrentChapter((c) => Math.max(0, c - 1))}
             disabled={currentChapter === 0}
-            className="p-2.5 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all"
+            className={`p-2.5 rounded-xl border disabled:opacity-40 disabled:pointer-events-none transition-all ${
+              isOrganicLight 
+                ? 'bg-[#FAF8F5] border-[#E8E4DC] text-[#333333] hover:border-[#7C8D81]' 
+                : 'bg-slate-900 border-white/10 text-slate-300 hover:text-white'
+            }`}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -132,8 +211,8 @@ export const LevelPath: React.FC = () => {
                 onClick={() => setCurrentChapter(idx)}
                 className={`h-3 rounded-full transition-all ${
                   currentChapter === idx
-                    ? 'w-8 bg-cyan-400 shadow-neon-cyan'
-                    : 'w-3 bg-slate-700 hover:bg-slate-500'
+                    ? isOrganicLight ? 'w-8 bg-[#7C8D81] shadow-sm' : 'w-8 bg-cyan-400 shadow-neon-cyan'
+                    : isOrganicLight ? 'w-3 bg-[#D8D2C9] hover:bg-[#B0A89C]' : 'w-3 bg-slate-700 hover:bg-slate-500'
                 }`}
               />
             ))}
@@ -142,7 +221,11 @@ export const LevelPath: React.FC = () => {
           <button
             onClick={() => setCurrentChapter((c) => Math.min(chapters.length - 1, c + 1))}
             disabled={currentChapter === chapters.length - 1}
-            className="p-2.5 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-all"
+            className={`p-2.5 rounded-xl border disabled:opacity-40 disabled:pointer-events-none transition-all ${
+              isOrganicLight 
+                ? 'bg-[#FAF8F5] border-[#E8E4DC] text-[#333333] hover:border-[#7C8D81]' 
+                : 'bg-slate-900 border-white/10 text-slate-300 hover:text-white'
+            }`}
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -156,23 +239,36 @@ export const LevelPath: React.FC = () => {
           const isUnlocked = lvl <= unlockedLevels + 1;
           const isCurrent = lvl === level;
           const isCompleted = lvl <= unlockedLevels;
+          const isKeyUnlockable = !isUnlocked && lvl === unlockedLevels + 2 && (inventory['token-quantum-leap'] || 0) > 0;
 
           return (
             <motion.button
               key={lvl}
-              whileHover={isUnlocked ? { scale: 1.05 } : {}}
-              whileTap={isUnlocked ? { scale: 0.95 } : {}}
+              whileHover={isUnlocked || isKeyUnlockable ? { scale: 1.05 } : {}}
+              whileTap={isUnlocked || isKeyUnlockable ? { scale: 0.95 } : {}}
               onClick={() => handleSelectLevel(lvl)}
-              disabled={!isUnlocked}
+              disabled={!isUnlocked && !isKeyUnlockable}
               className={`relative aspect-square rounded-2xl p-2 flex flex-col items-center justify-between border transition-all ${
                 isCurrent
-                  ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300 ring-2 ring-cyan-400/40'
+                  ? isOrganicLight
+                    ? 'bg-[#7C8D81]/20 border-[#7C8D81] shadow-sm text-[#245041] ring-2 ring-[#7C8D81]/40 font-bold'
+                    : 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300 ring-2 ring-cyan-400/40'
                   : isBoss
-                  ? 'bg-red-950/40 border-red-500/40 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:border-red-400'
+                  ? isOrganicLight
+                    ? 'bg-red-50 border-red-300 text-red-700 shadow-sm hover:border-red-400'
+                    : 'bg-red-950/40 border-red-500/40 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:border-red-400'
+                  : isKeyUnlockable
+                  ? 'bg-amber-950/40 border-amber-500/60 text-amber-300 shadow-neon-amber/40 animate-pulse hover:border-amber-400 cursor-pointer'
                   : isCompleted
-                  ? 'glass-panel border-emerald-500/30 text-emerald-400 hover:border-emerald-400'
+                  ? isOrganicLight
+                    ? 'bg-[#5EAA7C]/15 border-[#5EAA7C]/40 text-[#245041] hover:border-[#5EAA7C] shadow-sm'
+                    : 'glass-panel border-emerald-500/30 text-emerald-400 hover:border-emerald-400'
                   : isUnlocked
-                  ? 'glass-panel border-white/20 text-white hover:border-cyan-400'
+                  ? isOrganicLight
+                    ? 'bg-white border-[#7C8D81]/40 text-[#333333] hover:border-[#7C8D81] shadow-sm'
+                    : 'glass-panel border-white/20 text-white hover:border-cyan-400'
+                  : isOrganicLight
+                  ? 'bg-[#FAF8F5]/80 border-[#E8E4DC] text-[#A09890] cursor-not-allowed opacity-60'
                   : 'bg-slate-950/50 border-white/5 text-slate-700 cursor-not-allowed opacity-60'
               }`}
             >
@@ -182,6 +278,8 @@ export const LevelPath: React.FC = () => {
                   <Skull className="w-3.5 h-3.5 text-red-400 animate-pulse" />
                 ) : isCompleted ? (
                   <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                ) : isKeyUnlockable ? (
+                  <Key className="w-3 h-3 text-amber-400 animate-bounce" />
                 ) : (
                   <span />
                 )}
@@ -191,20 +289,27 @@ export const LevelPath: React.FC = () => {
                 )}
               </div>
 
-              {/* Level Number or Lock */}
+              {/* Level Number, Key Leap, or Lock */}
               <div className="my-auto text-center">
                 {isUnlocked ? (
-                  <span className="font-display font-extrabold text-lg sm:text-xl">
+                  <span className={`font-display font-extrabold text-lg sm:text-xl ${
+                    isOrganicLight ? (isCompleted ? 'text-[#245041]' : isCurrent ? 'text-[#245041]' : 'text-[#333333]') : ''
+                  }`}>
                     {lvl}
                   </span>
+                ) : isKeyUnlockable ? (
+                  <div className="flex flex-col items-center">
+                    <span className="text-base">🗝️</span>
+                    <span className="text-[9px] font-mono font-black text-amber-300">LEAP</span>
+                  </div>
                 ) : (
-                  <Lock className="w-4 h-4 mx-auto text-slate-600" />
+                  <Lock className={`w-4 h-4 mx-auto ${isOrganicLight ? 'text-[#B0A89C]' : 'text-slate-600'}`} />
                 )}
               </div>
 
               {/* Subtitle / Type */}
-              <div className="text-[9px] font-mono tracking-tight opacity-75">
-                {isBoss ? 'BOSS' : `LVL`}
+              <div className={`text-[9px] font-mono tracking-tight ${isOrganicLight ? 'text-[#616C66]' : 'opacity-75'}`}>
+                {isBoss ? 'BOSS' : isKeyUnlockable ? `USE KEY` : `LVL`}
               </div>
             </motion.button>
           );
@@ -214,7 +319,7 @@ export const LevelPath: React.FC = () => {
       {/* Mission Briefing Modal */}
       <AnimatePresence>
         {briefingLevel !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -236,7 +341,7 @@ export const LevelPath: React.FC = () => {
                       Mission Briefing
                     </span>
                     <h3 className="font-display font-black text-xl text-white">
-                      {isBossMission ? `Boss Encounter: ${activeChap.bossName}` : `Stage ${briefingLevel}: Velocity Test`}
+                      {isBossMission ? `Boss Encounter: ${activeChap.bossName}` : `Stage ${briefingLevel}: ${briefingLevel ? LEVEL_THEMES[(briefingLevel - 1) % LEVEL_THEMES.length] : 'Velocity Test'}`}
                     </h3>
                   </div>
                 </div>
@@ -276,40 +381,88 @@ export const LevelPath: React.FC = () => {
                 </div>
               </div>
 
-              {/* Module Switcher: Normal vs Coding */}
+              {/* Practice Format Selection */}
               <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block font-mono uppercase tracking-wider">
-                  Text Module
+                <label className="text-xs font-bold text-slate-400 mb-1.5 flex items-center justify-between font-mono uppercase tracking-wider">
+                  <span>Practice Format</span>
+                  <span className="text-cyan-400 font-bold lowercase">{mode} mode active</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-1.5">
                   <button
                     onClick={() => {
                       setCategory('Literature');
-                      if (mode === 'Code') setMode('Words');
+                      setMode('Words');
                     }}
-                    className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
-                      category === 'Literature'
+                    className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                      category === 'Literature' && mode === 'Words'
                         ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300'
                         : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-white'
                     }`}
                   >
-                    <BookOpen className="w-4 h-4 text-cyan-400" />
-                    <span>Literature (Normal)</span>
+                    <Type className="w-4 h-4 text-cyan-400" />
+                    <span>Words</span>
                   </button>
 
+                  <button
+                    onClick={() => {
+                      setCategory('Literature');
+                      setMode('Lines');
+                    }}
+                    className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                      category === 'Literature' && mode === 'Lines'
+                        ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300'
+                        : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <AlignLeft className="w-4 h-4 text-cyan-400" />
+                    <span>Lines</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCategory('Literature');
+                      setMode('Paragraphs');
+                    }}
+                    className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                      category === 'Literature' && mode === 'Paragraphs'
+                        ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300'
+                        : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 text-cyan-400" />
+                    <span>Paras</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCategory('Literature');
+                      setMode('Pages');
+                    }}
+                    className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                      category === 'Literature' && mode === 'Pages'
+                        ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300 ring-1 ring-cyan-400/50'
+                        : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4 text-cyan-400" />
+                    <span>Pages 📖</span>
+                  </button>
+                </div>
+
+                <div className="mt-2">
                   <button
                     onClick={() => {
                       setCategory('Coding');
                       setMode('Code');
                     }}
-                    className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                    className={`w-full py-2 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
                       category === 'Coding'
                         ? 'bg-purple-500/20 border-purple-400 shadow-neon-purple text-purple-300'
-                        : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-white'
+                        : 'bg-slate-950/40 border-white/5 text-slate-400 hover:text-white'
                     }`}
                   >
                     <Code2 className="w-4 h-4 text-purple-400" />
-                    <span>Coding Syntax</span>
+                    <span>Or Practice in Coding Syntax Module</span>
                   </button>
                 </div>
               </div>

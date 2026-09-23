@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { calculateRankStats } from '../../utils/ranks';
+import { APP_VERSION } from '../../utils/theme';
 import { 
   X, 
   Printer, 
@@ -42,7 +43,12 @@ export const CertificateModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setModal(null);
+      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl overflow-y-auto"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -199,7 +205,7 @@ export const CertificateModal: React.FC = () => {
                 Algorithmic Evaluation
               </div>
               <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                Ver: ATI 2.5 Native Desktop
+                Ver: ATI {APP_VERSION} Native Desktop
               </div>
             </div>
           </div>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Inter', -apple-system, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: #1a1a2e;
+      }
+      .ambient-glow {
+        position: absolute;
+        top: 45%;
+        left: 50%;
+        width: 700px;
+        height: 700px;
+        margin-left: -350px;
+        margin-top: -350px;
+        background: radial-gradient(circle, rgba(255, 190, 11, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+      }
+      .content-wrap {
+        position: absolute;
+        inset: 0;
+        padding: 120px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 10;
+      }
+      .tag-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 28px;
+        background: rgba(255, 190, 11, 0.1);
+        border: 2px solid rgba(255, 190, 11, 0.4);
+        border-radius: 100px;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        color: #FFBE0B;
+        text-transform: uppercase;
+        margin-bottom: 60px;
+      }
+      .big-statement {
+        font-size: 96px;
+        font-weight: 900;
+        line-height: 1.05;
+        color: #f5f0e8;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+        max-width: 920px;
+      }
+      .highlight-coral {
+        color: #FF5E5B;
+        display: block;
+        margin: 16px 0;
+      }
+      .key-wireframe {
+        margin-top: 80px;
+        display: flex;
+        gap: 20px;
+      }
+      .homerow-key {
+        width: 100px;
+        height: 100px;
+        border: 3px solid #6c5b7b;
+        background: rgba(37, 37, 66, 0.6);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        font-weight: 800;
+        color: #f5f0e8;
+      }
+      .homerow-key.active {
+        border-color: #FFBE0B;
+        background: rgba(255, 190, 11, 0.2);
+        color: #FFBE0B;
+        box-shadow: 0 0 40px rgba(255, 190, 11, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="02-tension"
+      data-start="0"
+      data-duration="2.4"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="bg-02" class="clip bg-layer" data-start="0" data-duration="2.4" data-track-index="0">
+        <div id="glow" class="ambient-glow"></div>
+      </div>
+
+      <div id="content-02" class="clip content-wrap" data-start="0" data-duration="2.4" data-track-index="1">
+        <div id="badge" class="tag-badge">⚡ The Untapped Potential</div>
+        <div class="big-statement">
+          <span id="line1" style="display: block;">Your Keyboard</span>
+          <span id="line2" class="highlight-coral">Is 3X Faster</span>
+          <span id="line3" style="display: block;">Than You Think</span>
+        </div>
+
+        <div id="keyboard-dock" class="key-wireframe">
+          <div class="homerow-key">A</div>
+          <div class="homerow-key">S</div>
+          <div class="homerow-key">D</div>
+          <div class="homerow-key active" id="pulse-key">F</div>
+          <div class="homerow-key active" id="pulse-key2">J</div>
+          <div class="homerow-key">K</div>
+          <div class="homerow-key">L</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#badge",
+        { opacity: 0, y: -30, scale: 0.8 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" },
+        0.05
+      );
+
+      tl.fromTo("#line1",
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        0.2
+      );
+      tl.fromTo("#line2",
+        { opacity: 0, scale: 0.85, y: 40 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.7)" },
+        0.35
+      );
+      tl.fromTo("#line3",
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        0.5
+      );
+
+      tl.fromTo("#keyboard-dock",
+        { opacity: 0, y: 60 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
+        0.65
+      );
+
+      // Pulse the active anchor keys
+      tl.fromTo(["#pulse-key", "#pulse-key2"],
+        { scale: 1 },
+        { scale: 1.15, repeat: 4, yoyo: true, duration: 0.35, ease: "sine.inOut" },
+        0.9
+      );
+
+      window.__timelines["02-tension"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

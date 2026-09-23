@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Inter', -apple-system, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: #1a1a2e;
+      }
+      .header-wrap {
+        position: absolute;
+        top: 140px;
+        left: 80px;
+        right: 80px;
+        text-align: center;
+        z-index: 20;
+      }
+      .pill {
+        display: inline-block;
+        padding: 10px 24px;
+        background: rgba(255, 94, 91, 0.15);
+        border: 2px solid #FF5E5B;
+        border-radius: 100px;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 4px;
+        color: #FF5E5B;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+      }
+      .headline {
+        font-size: 80px;
+        font-weight: 900;
+        color: #f5f0e8;
+        line-height: 0.95;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+      }
+      .heatmap-card {
+        position: absolute;
+        bottom: 110px;
+        left: 60px;
+        right: 60px;
+        height: 1200px;
+        border-radius: 28px;
+        overflow: hidden;
+        border: 4px solid #FFBE0B;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.85), 0 0 50px rgba(255, 190, 11, 0.25);
+        z-index: 10;
+        background: #0f101a;
+      }
+      .heatmap-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top center;
+        display: block;
+      }
+      .scanner-beam {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 12px;
+        background: linear-gradient(180deg, rgba(255, 190, 11, 0.8), transparent);
+        box-shadow: 0 0 30px #FFBE0B;
+        z-index: 25;
+        will-change: transform;
+      }
+      .chips-row {
+        position: absolute;
+        bottom: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 20px;
+        z-index: 30;
+      }
+      .chip-item {
+        padding: 12px 24px;
+        background: rgba(26, 26, 46, 0.95);
+        border: 2px solid #FFBE0B;
+        border-radius: 100px;
+        color: #f5f0e8;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="08-heatmap"
+      data-start="0"
+      data-duration="3"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="bg-08" class="clip bg-layer" data-start="0" data-duration="3" data-track-index="0"></div>
+
+      <div id="header-08" class="clip header-wrap" data-start="0" data-duration="3" data-track-index="1">
+        <div id="badge" class="pill">🔍 AI MISTAKE ANALYTICS</div>
+        <div id="title" class="headline">KNOW YOUR<br><span style="color: #FFBE0B;">WEAK KEYS.</span></div>
+      </div>
+
+      <div id="card" class="clip heatmap-card" data-start="0" data-duration="3" data-track-index="2">
+        <img class="heatmap-img" src="assets/ati-heatmap.png" alt="Keyboard Heatmap" />
+        <div id="scanner" class="scanner-beam"></div>
+      </div>
+
+      <div id="chips" class="clip chips-row" data-start="0" data-duration="3" data-track-index="3">
+        <div class="chip-item">Finger Placement</div>
+        <div class="chip-item">Error Frequency</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#badge",
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        0.05
+      );
+      tl.fromTo("#title",
+        { opacity: 0, scale: 0.9, y: 30 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.5, ease: "back.out(1.5)" },
+        0.15
+      );
+
+      tl.fromTo("#card",
+        { opacity: 0, y: 80, scale: 0.92 },
+        { opacity: 1, y: 0, scale: 1.0, duration: 0.7, ease: "power3.out" },
+        0.3
+      );
+
+      // Laser scanning beam
+      tl.fromTo("#scanner",
+        { y: 0, opacity: 1 },
+        { y: 1100, opacity: 0.7, duration: 1.8, ease: "power1.inOut" },
+        0.5
+      );
+
+      tl.fromTo("#chips",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        0.7
+      );
+
+      window.__timelines["08-heatmap"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

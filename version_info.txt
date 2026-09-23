@@ -4,8 +4,8 @@
 # http://msdn.microsoft.com/en-us/library/ms646997.aspx
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(2, 5, 0, 0),
-    prodvers=(2, 5, 0, 0),
+    filevers=(3, 2, 1, 0),
+    prodvers=(3, 2, 1, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -20,12 +20,12 @@ VSVersionInfo(
         u'040904B0',
         [StringStruct(u'CompanyName',      u'Neel, Ansh and Aarush'),
          StringStruct(u'FileDescription',  u'Advanced Typing Instructor'),
-         StringStruct(u'FileVersion',      u'2.5.0.0'),
+         StringStruct(u'FileVersion',      u'3.2.1.0'),
          StringStruct(u'InternalName',     u'AdvancedTypingInstructor'),
-         StringStruct(u'LegalCopyright',   u'2025 Neel, Ansh and Aarush'),
+         StringStruct(u'LegalCopyright',   u'2026 Neel, Ansh and Aarush'),
          StringStruct(u'OriginalFilename', u'AdvancedTypingInstructor.exe'),
          StringStruct(u'ProductName',      u'Advanced Typing Instructor'),
-         StringStruct(u'ProductVersion',   u'2.5.0.0')])
+         StringStruct(u'ProductVersion',   u'3.2.1.0')])
       ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]

@@ -1,0 +1,160 @@
+.outer-container {
+  display: flex;
+  min-height: 100%;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.step-circle-container {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 54rem;
+  border-radius: 2rem;
+  background: var(--stepper-bg, rgba(15, 23, 42, 0.75));
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--stepper-border, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.12),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.step-indicator-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 1.75rem 2rem 1.25rem;
+}
+
+.step-content-default {
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.step-default {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.footer-container {
+  padding-left: 2rem;
+  padding-right: 2rem;
+  padding-bottom: 2rem;
+}
+
+.footer-nav {
+  margin-top: 2rem;
+  display: flex;
+}
+
+.footer-nav.spread {
+  justify-content: space-between;
+}
+
+.footer-nav.end {
+  justify-content: flex-end;
+}
+
+.back-button {
+  transition: all 250ms ease;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  color: var(--stepper-muted, #94a3b8);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.back-button:hover {
+  color: var(--stepper-text, #f8fafc);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.back-button.inactive {
+  pointer-events: none;
+  opacity: 0.35;
+  color: #a3a3a3;
+}
+
+.next-button {
+  transition: all 250ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--stepper-primary, #5227ff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: -0.015em;
+  padding: 0.5rem 1.35rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.next-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.next-button:active {
+  transform: translateY(0);
+}
+
+.step-indicator {
+  position: relative;
+  cursor: pointer;
+  outline: none;
+}
+
+.step-indicator-inner {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.active-dot {
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+  background-color: #fff;
+}
+
+.step-number {
+  font-size: 0.875rem;
+}
+
+.step-connector {
+  position: relative;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  height: 0.15rem;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background-color: var(--stepper-track-bg, #52525b);
+}
+
+.step-connector-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+}
+
+.check-icon {
+  height: 1.15rem;
+  width: 1.15rem;
+  color: #fff;
+}

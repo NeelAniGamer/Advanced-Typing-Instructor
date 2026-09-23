@@ -1,12 +1,13 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { MultiplayerRoom, MultiplayerPlayer, UserProfile } from '../types/game';
+import { supabaseService } from './supabaseService';
 
 type MessageHandler = (data: any) => void;
-export type MultiplayerProvider = 'supabase' | 'custom_ws' | 'local';
+export type MultiplayerProvider = 'supabase' | 'local';
 
 export const SUPABASE_CONFIG = {
-  url: 'https://hvukxajztizsuhfubjws.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2dWt4YWp6dGl6c3VoZnViandzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Mzc1MTAsImV4cCI6MjA5NjQxMzUxMH0.KqQRkmhuB_rFlzQ2N3NhSQrftmVZgGE3NUuVHYh3aYE',
+  url: (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://hvukxajztizsuhfubjws.supabase.co',
+  anonKey: (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2dWt4YWp6dGl6c3VoZnViandzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Mzc1MTAsImV4cCI6MjA5NjQxMzUxMH0.KqQRkmhuB_rFlzQ2N3NhSQrftmVZgGE3NUuVHYh3aYE',
   siteUrl: 'https://advancedlogiclabs.dpdns.org',
 };
 
@@ -20,6 +21,8 @@ class MultiplayerService {
   private currentChannel: RealtimeChannel | null = null;
   private currentRoomCode: string | null = null;
   private currentProfile: UserProfile | null = null;
+  private currentHostId: string | null = null;
+  private currentPresenceKey: string | null = null;
   private isHost: boolean = false;
   private roomPodium: any[] = [];
   private roomText: string = '';
@@ -33,7 +36,9 @@ class MultiplayerService {
   }
 
   public getProvider(): MultiplayerProvider {
-    return (localStorage.getItem('mp_provider') as MultiplayerProvider) || 'supabase';
+    const saved = localStorage.getItem('mp_provider');
+    if (saved === 'local' || saved === 'supabase') return saved;
+    return 'supabase';
   }
 
   public setProvider(provider: MultiplayerProvider) {
@@ -159,7 +164,7 @@ class MultiplayerService {
   // ─────────────────────────────────────────────────────────────
   // ROOM ACTIONS (SUPABASE + WS HYBRID)
   // ─────────────────────────────────────────────────────────────
-  public async createRoom(profile: UserProfile, mode: string = 'race', text?: string) {
+  public async createRoom(profile: UserProfile, mode: string = 'race', text?: string, isPublic: boolean = true) {
     const provider = this.getProvider();
 
     if (provider === 'supabase' && this.supabase) {
@@ -175,6 +180,31 @@ class MultiplayerService {
         code += chars[Math.floor(Math.random() * chars.length)];
       }
       this.currentRoomCode = code;
+      this.currentHostId = profile.id;
+
+      const registered: string | null = await supabaseService.createCloudRoom({
+        code,
+        host_id: profile.id,
+        host_name: profile.name,
+        mode,
+        text: this.roomText,
+        status: 'waiting',
+        is_public: isPublic,
+        max_players: 8,
+        current_player_count: 1,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 7200000).toISOString(),
+      }).catch((e: any) => (e?.message || 'Network error') as string);
+
+      if (registered !== null) {
+        // Never emit room_created for a phantom lobby no one can discover.
+        // Include the server's own message so the cause is visible, not a guess.
+        this.emit({
+          type: 'room_error',
+          msg: `Lobby registration failed: ${registered.slice(0, 160)}`,
+        });
+        return;
+      }
 
       await this.joinSupabaseChannel(code, profile, true);
 
@@ -200,6 +230,7 @@ class MultiplayerService {
       races_won: profile.wins,
       mode,
       text,
+      is_public: isPublic,
     });
   }
 
@@ -213,13 +244,29 @@ class MultiplayerService {
       this.currentRoomCode = cleanCode;
       this.roomPodium = [];
 
+      // Fix: increment player count from server truth instead of hardcoding 2
+      // (3rd/4th joiners previously corrupted the lobby count).
+      const roomData = await supabaseService.getCloudRoom(cleanCode);
+      const nextCount = Math.min(
+        (roomData?.max_players ?? 8),
+        (roomData?.current_player_count ?? 1) + 1,
+      );
+      await supabaseService.updateCloudRoom(cleanCode, {
+        current_player_count: nextCount,
+      });
+
+      if (roomData?.text) {
+        this.roomText = roomData.text;
+      }
+      this.currentHostId = roomData?.host_id || null;
+
       await this.joinSupabaseChannel(cleanCode, profile, false);
 
       this.emit({
         type: 'room_joined',
         code: cleanCode,
-        host: 'remote',
-        mode: 'race',
+        host: roomData?.host_id || 'remote',
+        mode: roomData?.mode || 'race',
         text: this.roomText || 'The race is about to begin. Type swiftly and accurately!',
       });
       return;
@@ -246,10 +293,17 @@ class MultiplayerService {
       await this.supabase.removeChannel(this.currentChannel);
     }
 
+    // Unique presence key per WINDOW, not per account. Two windows logged
+    // into the same account must appear as two racers — keying by profile.id
+    // collapses them into one entry and each window sees only itself.
+    // The payload `id` stays profile.id so YOU/host detection keeps working.
+    const sessionKey = `${profile.id}:${Math.random().toString(36).slice(2, 8)}`;
+    this.currentPresenceKey = sessionKey;
+
     const channel = this.supabase.channel(`room:${code}`, {
       config: {
         broadcast: { self: true },
-        presence: { key: profile.id },
+        presence: { key: sessionKey },
       },
     });
 
@@ -269,7 +323,9 @@ class MultiplayerService {
             rank: p.rank || 'Novice',
             rank_color: p.rank_color || '#00f5ff',
             best_wpm: p.best_wpm || 0,
-            races_won: p.races_won || 0,
+            // Tracked profiles carry `wins`, not `races_won` — map it so the
+            // lobby cards never zero out a player's win count.
+            races_won: p.races_won ?? p.wins ?? 0,
             progress: p.progress || 0,
             wpm: p.wpm || 0,
             ready: Boolean(p.ready),
@@ -278,25 +334,47 @@ class MultiplayerService {
         }
       });
 
+      // Host id must survive presence re-syncs, otherwise joiners lose the
+      // crown icon and host actions. Late joiners also miss the one-shot
+      // room_sync broadcast, so the host re-announces on every sync.
+      if (isHost) {
+        this.currentHostId = profile.id;
+      }
+
       this.emit({
         type: 'room_state',
         code,
-        host: isHost ? profile.id : 'remote',
+        host: this.currentHostId || (isHost ? profile.id : 'remote'),
         mode: 'race',
         started: false,
         finished: false,
         players,
         text: this.roomText,
       });
+
+      if (isHost) {
+        channel.send({
+          type: 'broadcast',
+          event: 'room_sync',
+          payload: {
+            host: profile.id,
+            mode: 'race',
+            text: this.roomText,
+            started: false,
+          },
+        });
+      }
     });
 
     // 2. Broadcast listeners
     channel.on('broadcast', { event: 'race_countdown' }, ({ payload }) => {
+      this.emit({ type: 'countdown', count: payload.count });
       this.emit({ type: 'race_countdown', count: payload.count });
     });
 
-    channel.on('broadcast', { event: 'race_start' }, () => {
-      this.emit({ type: 'race_start' });
+    channel.on('broadcast', { event: 'race_start' }, ({ payload }) => {
+      if (payload?.text) this.roomText = payload.text;
+      this.emit({ type: 'race_start', text: payload?.text || this.roomText });
     });
 
     channel.on('broadcast', { event: 'progress_update' }, ({ payload }) => {
@@ -304,7 +382,19 @@ class MultiplayerService {
     });
 
     channel.on('broadcast', { event: 'race_over' }, ({ payload }) => {
-      this.emit({ type: 'race_over', podium: payload.podium });
+      // Fix: merge podiums from all finishers (dedupe by player id/name)
+      // instead of replacing. Previously each finisher broadcast only its
+      // local single-entry podium, so clients disagreed on standings.
+      const incoming: any[] = Array.isArray(payload?.podium) ? payload.podium : [];
+      const seen = new Set(this.roomPodium.map((r: any) => r.player_id ?? r.name));
+      for (const r of incoming) {
+        const key = (r as any).player_id ?? (r as any).name;
+        if (!seen.has(key)) {
+          seen.add(key);
+          this.roomPodium.push(r);
+        }
+      }
+      this.emit({ type: 'race_over', podium: [...this.roomPodium] });
     });
 
     channel.on('broadcast', { event: 'chat' }, ({ payload }) => {
@@ -319,6 +409,7 @@ class MultiplayerService {
 
     channel.on('broadcast', { event: 'room_sync' }, ({ payload }) => {
       if (payload.text) this.roomText = payload.text;
+      if (payload.host) this.currentHostId = payload.host;
       this.emit({
         type: 'room_state',
         code,
@@ -374,6 +465,21 @@ class MultiplayerService {
         progress: 0,
         wpm: 0,
       });
+      // Broadcast ready update immediately to all peers in the room
+      this.currentChannel.send({
+        type: 'broadcast',
+        event: 'progress_update',
+        payload: {
+          players: {
+            [this.currentProfile.id]: {
+              ...this.currentProfile,
+              ready,
+              progress: 0,
+              wpm: 0,
+            }
+          }
+        }
+      });
       return;
     }
     this.send({ type: 'ready', ready });
@@ -381,6 +487,10 @@ class MultiplayerService {
 
   public startRace() {
     if (this.currentChannel) {
+      if (this.currentRoomCode) {
+        supabaseService.updateCloudRoom(this.currentRoomCode, { status: 'racing' });
+      }
+
       let count = 3;
       this.currentChannel.send({
         type: 'broadcast',
@@ -401,7 +511,7 @@ class MultiplayerService {
           this.currentChannel?.send({
             type: 'broadcast',
             event: 'race_start',
-            payload: {},
+            payload: { text: this.roomText },
           });
         }
       }, 1000);
@@ -438,14 +548,31 @@ class MultiplayerService {
   public sendFinish(wpm: number) {
     if (this.currentChannel && this.currentProfile) {
       const racer = {
+        player_id: this.currentProfile.id,
         name: this.currentProfile.name,
         avatar: this.currentProfile.avatar,
         rank: this.currentProfile.rank,
         rank_color: this.currentProfile.rank_color,
         wpm,
+        finishedAt: Date.now(),
       };
 
-      this.roomPodium.push(racer);
+      // Dedupe local finishes (double-finish guard) then claim next placement
+      if (!this.roomPodium.some((r: any) => (r.player_id ?? r.name) === (racer.player_id ?? racer.name))) {
+        this.roomPodium.push(racer);
+      }
+
+      // Record race result in Supabase Cloud Table
+      supabaseService.recordRaceResult({
+        room_code: this.currentRoomCode || undefined,
+        player_id: this.currentProfile.id,
+        player_name: this.currentProfile.name,
+        player_avatar: this.currentProfile.avatar || '👑',
+        wpm,
+        accuracy: 100,
+        placement: this.roomPodium.length,
+        mode: 'race',
+      });
 
       this.currentChannel.send({
         type: 'broadcast',
@@ -478,12 +605,55 @@ class MultiplayerService {
 
   public async leaveRoom() {
     if (this.currentChannel && this.supabase) {
+      if (this.isHost && this.currentRoomCode) {
+        supabaseService.deleteCloudRoom(this.currentRoomCode);
+      }
       await this.currentChannel.untrack();
       await this.supabase.removeChannel(this.currentChannel);
       this.currentChannel = null;
       this.currentRoomCode = null;
     }
     this.send({ type: 'leave_room' });
+  }
+
+  public async fetchPublicRooms(): Promise<any[]> {
+    const provider = this.getProvider();
+    if (provider === 'supabase') {
+      const rooms = await supabaseService.listPublicRooms();
+      return rooms.map((r) => ({
+        code: r.code,
+        players: r.current_player_count,
+        max: r.max_players,
+        started: r.status === 'racing',
+        mode: r.mode,
+        host: r.host_name,
+        text: r.text,
+      }));
+    }
+
+    if (provider === 'local') {
+      try {
+        const resp = await fetch('/api/list_rooms');
+        if (resp.ok) {
+          const data = await resp.json();
+          return (data.rooms || []).map((r: any) => ({
+            code: r.code,
+            players: r.players || r.player_count || 1,
+            max: r.max_players || 8,
+            started: Boolean(r.started),
+            mode: r.mode || 'race',
+            host: r.host_name || r.name || 'Local Host',
+            text: r.text || '',
+          }));
+        }
+      } catch {}
+    }
+
+    return [];
+  }
+
+  public subscribeToPublicRooms(onChange: () => void): () => void {
+    return supabaseService.subscribeToRooms(onChange);
   }
 
   public send(payload: any) {

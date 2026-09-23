@@ -1,0 +1,30 @@
+Advanced Typing Instructor v2.5 — by Class Of Learners
+
+ATI is the advanced typing tutor and competitive typing game built by Neel, Ansh & Aarush — students from Mumbai.
+
+TAGLINE: Master your keyboard. Type faster. Compete harder.
+
+FEATURES:
+- 200+ Levels: Progressive difficulty from basics to advanced
+- Boss Fights: Beat the AI boss at each milestone
+- Multiplayer Racing: Real-time WebSocket races against friends
+- Achievement System: Speed Rookie → Speed Legend progression
+- 3 Mechanical Switch Sounds: Cherry Blue, Brown, Red
+- Error Heatmap: Visual keyboard showing weak keys
+- Daily Challenges: Fresh typing tests every day
+- Tournament Mode: Compete in brackets
+- Speed Test: Instant WPM/accuracy measurement
+- Google Sign-In: OAuth2 for progress sync
+
+POSITIONING:
+"The typing tutor that actually makes you want to practice"
+— Gamified, competitive, social. Not a boring drill.
+
+TECH:
+- Python desktop app (pywebview + local HTTP/WebSocket)
+- Free on Windows
+- Auto-updater for seamless updates
+- SQLite local database for progress
+
+CTA: Download free at advancedlogiclabs.dpdns.org
+Built by: Neel, Ansh & Aarush (Class Of Learners, Mumbai)

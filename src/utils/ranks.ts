@@ -19,6 +19,8 @@ const modesDef: Record<TypingMode, string> = {
   Paragraphs: 'Scholar',
   Pages: 'Novelist',
   Code: 'Coder',
+  Time: 'Speedster',
+  SuddenDeath: 'Survivor',
 };
 
 const diffDef: Record<Difficulty, string> = {

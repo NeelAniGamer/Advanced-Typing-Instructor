@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
+import { APP_VERSION, APP_BUILD_REV } from '../../utils/theme';
 import { 
   Play, 
   Calendar, 
@@ -8,7 +9,8 @@ import {
   Award, 
   Terminal,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -44,9 +46,9 @@ export const LandingScreen: React.FC = () => {
         className="relative z-10 max-w-2xl flex flex-col items-center"
       >
         {/* Ready Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-mono font-bold mb-6 shadow-neon-cyan">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-mono font-bold mb-6">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>SYSTEM READY • v2.5.0</span>
+          <span>SYSTEM READY • v{APP_VERSION}</span>
         </div>
 
         {/* Mega Title */}
@@ -81,6 +83,14 @@ export const LandingScreen: React.FC = () => {
 
         {/* Quick Access Badges */}
         <div className="flex flex-wrap items-center justify-center gap-3 mt-10">
+          <button
+            onClick={() => setScreen('tutorial')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl glass-panel hover:border-cyan-400/40 text-xs font-semibold text-cyan-300 shadow-neon-cyan transition-all"
+          >
+            <GraduationCap className="w-4 h-4 text-cyan-400" />
+            <span>Starter Tutorial</span>
+          </button>
+
           <button
             onClick={() => setModal('daily')}
             className="flex items-center gap-2 px-4 py-2 rounded-xl glass-panel hover:border-amber-400/40 text-xs font-semibold text-amber-300 transition-all"
@@ -122,7 +132,7 @@ export const LandingScreen: React.FC = () => {
           className="mt-14 text-[11px] font-mono text-slate-600 hover:text-slate-400 transition-colors"
           title="Click 5× to trigger Admin Terminal"
         >
-          build-rev 2.5.0-react-tsx {versionClicks > 0 && `(${versionClicks}/5)`}
+          build-rev {APP_BUILD_REV} {versionClicks > 0 && `(${versionClicks}/5)`}
         </button>
 
       </motion.div>

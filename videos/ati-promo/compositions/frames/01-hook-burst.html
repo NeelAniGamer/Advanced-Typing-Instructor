@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Inter', -apple-system, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 50%, #2a2040 0%, #1a1a2e 70%, #10101d 100%);
+      }
+      .hatch-pattern {
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(45deg, transparent 0 20px, rgba(255, 94, 91, 0.04) 20px 40px);
+      }
+      .ring-pulse {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 600px;
+        height: 600px;
+        margin-left: -300px;
+        margin-top: -300px;
+        border: 4px solid #FF5E5B;
+        border-radius: 50%;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .center-stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      .key-cap {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 140px;
+        height: 140px;
+        margin-left: -70px;
+        margin-top: -70px;
+        background: #252542;
+        border: 3px solid #FFBE0B;
+        border-radius: 24px;
+        box-shadow: 0 16px 32px rgba(0,0,0,0.5), inset 0 -6px 0 rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 52px;
+        font-weight: 900;
+        color: #f5f0e8;
+        letter-spacing: 2px;
+        will-change: transform, opacity;
+      }
+      .hero-word {
+        font-size: 150px;
+        font-weight: 900;
+        color: #f5f0e8;
+        letter-spacing: -4px;
+        text-transform: uppercase;
+        line-height: 0.9;
+        text-align: center;
+        text-shadow: 0 20px 50px rgba(255, 94, 91, 0.4);
+      }
+      .hero-sub {
+        margin-top: 24px;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 12px;
+        color: #FFBE0B;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="01-hook-burst"
+      data-start="0"
+      data-duration="2.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="bg-01" class="clip bg-layer" data-start="0" data-duration="2.5" data-track-index="0">
+        <div class="hatch-pattern"></div>
+      </div>
+
+      <div id="shockwave" class="clip ring-pulse" data-start="0" data-duration="2.5" data-track-index="1"></div>
+
+      <!-- Exploding mechanical keys -->
+      <div id="key-f" class="clip key-cap" data-start="0" data-duration="2.5" data-track-index="2">F</div>
+      <div id="key-j" class="clip key-cap" data-start="0" data-duration="2.5" data-track-index="3">J</div>
+      <div id="key-space" class="clip key-cap" style="width: 240px; margin-left: -120px;" data-start="0" data-duration="2.5" data-track-index="4">SPACE</div>
+      <div id="key-cmd" class="clip key-cap" data-start="0" data-duration="2.5" data-track-index="5">⚡</div>
+      <div id="key-wpm" class="clip key-cap" data-start="0" data-duration="2.5" data-track-index="6">WPM</div>
+
+      <div id="stage-01" class="clip center-stage" data-start="0" data-duration="2.5" data-track-index="7">
+        <div id="hero-title" class="hero-word">STOP<br><span style="color: #FF5E5B;">TYPING</span></div>
+        <div id="hero-sub" class="hero-sub">SLOW</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Opening explosive shockwave
+      tl.fromTo("#shockwave", 
+        { scale: 0.1, opacity: 1 }, 
+        { scale: 3.5, opacity: 0, duration: 1.2, ease: "power3.out" }, 
+        0
+      );
+
+      // Keycaps explode outward radially
+      tl.fromTo("#key-f",
+        { x: 0, y: 0, rotation: 0, scale: 0.2, opacity: 0 },
+        { x: -380, y: -450, rotation: -35, scale: 1.2, opacity: 0.85, duration: 1.4, ease: "power4.out" },
+        0.05
+      );
+      tl.fromTo("#key-j",
+        { x: 0, y: 0, rotation: 0, scale: 0.2, opacity: 0 },
+        { x: 390, y: -420, rotation: 30, scale: 1.15, opacity: 0.85, duration: 1.4, ease: "power4.out" },
+        0.05
+      );
+      tl.fromTo("#key-space",
+        { x: 0, y: 0, rotation: 0, scale: 0.2, opacity: 0 },
+        { x: 0, y: 560, rotation: -8, scale: 1.1, opacity: 0.9, duration: 1.5, ease: "power4.out" },
+        0.08
+      );
+      tl.fromTo("#key-cmd",
+        { x: 0, y: 0, rotation: 0, scale: 0.2, opacity: 0 },
+        { x: -350, y: 420, rotation: 40, scale: 1.0, opacity: 0.8, duration: 1.4, ease: "power4.out" },
+        0.1
+      );
+      tl.fromTo("#key-wpm",
+        { x: 0, y: 0, rotation: 0, scale: 0.2, opacity: 0 },
+        { x: 360, y: 380, rotation: -25, scale: 1.05, opacity: 0.8, duration: 1.4, ease: "power4.out" },
+        0.1
+      );
+
+      // Hero text slam
+      tl.fromTo("#hero-title",
+        { scale: 2.2, opacity: 0, y: -80 },
+        { scale: 1.0, opacity: 1, y: 0, duration: 0.7, ease: "elastic.out(1, 0.6)" },
+        0.15
+      );
+      tl.fromTo("#hero-sub",
+        { opacity: 0, y: 30, scale: 0.8 },
+        { opacity: 1, y: 0, scale: 1.0, duration: 0.6, ease: "power2.out" },
+        0.45
+      );
+
+      window.__timelines["01-hook-burst"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

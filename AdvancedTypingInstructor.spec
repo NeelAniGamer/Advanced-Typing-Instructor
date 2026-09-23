@@ -1,23 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [
-    ('dist', 'dist'),
-    ('index.html', '.'),
-    ('style.css', '.'),
-    ('ui_fixes.css', '.'),
-    ('script.js', '.'),
-    ('patches.js', '.'),
-    ('achievements.js', '.'),
-    ('firebase_mp.js', '.'),
-    ('firebase_config.js', '.'),
-    ('google_auth.js', '.'),
-    ('emerald.png', '.'),
-    ('download.png', '.')
-]
+datas = [('dist', 'dist'), ('index.html', '.'), ('style.css', '.'), ('ui_fixes.css', '.'), ('script.js', '.'), ('patches.js', '.'), ('achievements.js', '.'), ('firebase_mp.js', '.'), ('firebase_config.js', '.'), ('google_auth.js', '.'), ('emerald.png', '.'), ('download.png', '.'), ('game_icon.ico', '.')]
 binaries = []
-hiddenimports = ['websockets', 'websockets.server', 'websockets.legacy', 'websockets.legacy.server', 'websockets.connection', 'requests', 'clr', 'pythonnet']
+hiddenimports = ['websockets', 'websockets.server', 'websockets.asyncio.server', 'websockets.legacy', 'websockets.legacy.server', 'websockets.connection', 'requests', 'pystray', 'pystray._win32', 'PIL', 'win32gui', 'win32con', 'background_daemon.tray_manager']
 tmp_ret = collect_all('webview')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('pystray')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('PIL')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 

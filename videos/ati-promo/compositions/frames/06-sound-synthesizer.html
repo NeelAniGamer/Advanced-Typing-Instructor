@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #1a1a2e;
+        font-family: 'Inter', -apple-system, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: #1a1a2e;
+      }
+      .header-wrap {
+        position: absolute;
+        top: 160px;
+        left: 80px;
+        right: 80px;
+        text-align: center;
+        z-index: 20;
+      }
+      .tag {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 6px;
+        color: #00B4D8;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .title {
+        font-size: 86px;
+        font-weight: 900;
+        color: #f5f0e8;
+        line-height: 0.95;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+      }
+      .visualizer-box {
+        position: absolute;
+        top: 500px;
+        left: 80px;
+        right: 80px;
+        height: 420px;
+        background: #252542;
+        border: 3px solid #6c5b7b;
+        border-radius: 32px;
+        padding: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+        z-index: 10;
+      }
+      .eq-bar {
+        width: 24px;
+        height: 280px;
+        background: linear-gradient(180deg, #FF5E5B 0%, #FFBE0B 60%, #00B4D8 100%);
+        border-radius: 12px;
+        transform-origin: bottom center;
+        will-change: transform;
+      }
+      .switches-grid {
+        position: absolute;
+        bottom: 180px;
+        left: 80px;
+        right: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        z-index: 10;
+      }
+      .switch-card {
+        padding: 32px 40px;
+        background: rgba(37, 37, 66, 0.7);
+        border: 2px solid #6c5b7b;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .switch-name {
+        font-size: 34px;
+        font-weight: 900;
+        color: #f5f0e8;
+        letter-spacing: 1px;
+      }
+      .switch-type {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        padding: 8px 18px;
+        border-radius: 8px;
+        text-transform: uppercase;
+      }
+      .sw-blue { border-color: #00B4D8; box-shadow: 0 0 30px rgba(0, 180, 216, 0.25); }
+      .sw-blue .switch-type { background: rgba(0, 180, 216, 0.2); color: #00B4D8; }
+      .sw-brown { border-color: #FFBE0B; }
+      .sw-brown .switch-type { background: rgba(255, 190, 11, 0.2); color: #FFBE0B; }
+      .sw-red { border-color: #FF5E5B; }
+      .sw-red .switch-type { background: rgba(255, 94, 91, 0.2); color: #FF5E5B; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="06-sound-synthesizer"
+      data-start="0"
+      data-duration="3"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="bg-06" class="clip bg-layer" data-start="0" data-duration="3" data-track-index="0"></div>
+
+      <div id="header-06" class="clip header-wrap" data-start="0" data-duration="3" data-track-index="1">
+        <div id="tag" class="tag">REAL-TIME AUDIO SYNTHESIS</div>
+        <div id="title" class="title">MECHANICAL<br><span style="color: #FF5E5B;">SWITCH SOUNDS</span></div>
+      </div>
+
+      <div id="vis-box" class="clip visualizer-box" data-start="0" data-duration="3" data-track-index="2">
+        <div class="eq-bar" id="b1"></div>
+        <div class="eq-bar" id="b2"></div>
+        <div class="eq-bar" id="b3"></div>
+        <div class="eq-bar" id="b4"></div>
+        <div class="eq-bar" id="b5"></div>
+        <div class="eq-bar" id="b6"></div>
+        <div class="eq-bar" id="b7"></div>
+        <div class="eq-bar" id="b8"></div>
+        <div class="eq-bar" id="b9"></div>
+        <div class="eq-bar" id="b10"></div>
+        <div class="eq-bar" id="b11"></div>
+        <div class="eq-bar" id="b12"></div>
+      </div>
+
+      <div class="switches-grid">
+        <div id="sw1" class="clip switch-card sw-blue" data-start="0" data-duration="3" data-track-index="3">
+          <span class="switch-name">CHERRY MX BLUE</span>
+          <span class="switch-type">CLICKY · TACTILE</span>
+        </div>
+        <div id="sw2" class="clip switch-card sw-brown" data-start="0" data-duration="3" data-track-index="4">
+          <span class="switch-name">CHERRY MX BROWN</span>
+          <span class="switch-type">TACTILE · BALANCED</span>
+        </div>
+        <div id="sw3" class="clip switch-card sw-red" data-start="0" data-duration="3" data-track-index="5">
+          <span class="switch-name">CHERRY MX RED</span>
+          <span class="switch-type">LINEAR · SMOOTH</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#tag",
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        0.05
+      );
+      tl.fromTo("#title",
+        { opacity: 0, scale: 0.9, y: 30 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.5, ease: "back.out(1.5)" },
+        0.15
+      );
+
+      tl.fromTo("#vis-box",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1.0, duration: 0.5, ease: "power3.out" },
+        0.3
+      );
+
+      // Equalizer bars lively bounce animation
+      const barIds = ["#b1","#b2","#b3","#b4","#b5","#b6","#b7","#b8","#b9","#b10","#b11","#b12"];
+      barIds.forEach((id, i) => {
+        tl.fromTo(id,
+          { scaleY: 0.15 },
+          { 
+            scaleY: 0.3 + Math.sin(i * 0.8) * 0.5 + 0.3,
+            duration: 0.4,
+            repeat: 5,
+            yoyo: true,
+            ease: "sine.inOut"
+          },
+          0.3 + (i * 0.04)
+        );
+      });
+
+      tl.fromTo(["#sw1", "#sw2", "#sw3"],
+        { opacity: 0, x: -60 },
+        { opacity: 1, x: 0, stagger: 0.18, duration: 0.5, ease: "power2.out" },
+        0.6
+      );
+
+      window.__timelines["06-sound-synthesizer"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

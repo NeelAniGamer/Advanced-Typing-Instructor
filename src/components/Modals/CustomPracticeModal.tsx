@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
+import { isOrganicTheme } from '../../utils/theme';
 import { 
   X, 
   FileText, 
@@ -9,9 +10,13 @@ import {
   Clock, 
   Sparkles, 
   AlignLeft, 
-  Terminal 
+  Terminal,
+  ChevronDown,
+  SlidersHorizontal 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Fieldset, Dropdown, Chip, ProgressBar } from '../HeroUI';
+import { NumberTicker } from '../SpectrumUI';
 
 const PRESETS = [
   {
@@ -70,21 +75,30 @@ int main() {
 }`
   },
   {
-    title: 'Cyberpunk Neuromancer Opening',
-    icon: '🌌',
+    title: 'Kafka Architecture',
     category: 'Literature',
-    content: `The sky above the port was the color of television, tuned to a dead channel. It was not a matter of having no choice, but of recognizing that the matrix had its own gravity. Neon reflections spilled across wet asphalt, humming with the static of a billion connected cybernetic conduits.`
+    content: `Kafka is a distributed event store and stream-processing platform. It is designed to handle real-time data feeds with high throughput and low latency. Producers write events to topics, and consumers read them independently.`
   },
   {
-    title: 'System Design Architecture Pitch',
-    icon: '💼',
+    title: 'React Fiber Reconciliation',
+    category: 'Literature',
+    content: `React Fiber is the complete rewrite of React core algorithm. Its main goal is to enable incremental rendering: the ability to split rendering work into chunks and spread it out over multiple frames.`
+  },
+  {
+    title: 'High-Performance Rust',
+    category: 'Literature',
+    content: `Rust achieves memory safety without a garbage collector through its ownership and borrowing system. Zero-cost abstractions ensure that expressive high-level code compiles to optimal machine instructions.`
+  },
+  {
+    title: 'Microservices Latency p99',
     category: 'Literature',
     content: `Our high-throughput microservices cluster achieves sub-ten millisecond p99 latency across distributed geographical regions. By decoupling event ingestion using distributed queues and in-memory caches, we maintain maximum fault tolerance even during sudden traffic spikes.`
   }
 ];
 
 export const CustomPracticeModal: React.FC = () => {
-  const { user, loadCustomText, setModal } = useGameStore();
+  const { user, loadCustomText, setModal, uiTheme } = useGameStore();
+  const isOrganic = isOrganicTheme(uiTheme);
   const [customText, setCustomText] = useState(PRESETS[0].content);
   const [selectedTitle, setSelectedTitle] = useState(PRESETS[0].title);
 
@@ -104,24 +118,53 @@ export const CustomPracticeModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setModal(null);
+      }}
+      className={`fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-xl transition-colors ${
+        isOrganic ? 'bg-black/65' : 'bg-black/80'
+      }`}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="glass-panel w-full max-w-2xl p-6 sm:p-7 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(0,245,255,0.15)] flex flex-col gap-5 relative max-h-[90vh] overflow-y-auto"
+        className={`w-full max-w-2xl p-6 sm:p-7 rounded-3xl flex flex-col gap-5 relative max-h-[90vh] overflow-y-auto transition-all ${
+          isOrganic
+            ? 'bg-[#FAF8F5] border border-[#E5DFD7] text-[#333333] shadow-2xl'
+            : 'glass-panel border border-cyan-500/30 text-white shadow-[0_0_50px_rgba(0,245,255,0.15)]'
+        }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div
+          className={`flex items-center justify-between border-b pb-4 ${
+            isOrganic ? 'border-[#E5DFD7]' : 'border-white/10'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 shadow-neon-cyan">
-              <FileText className="w-5 h-5 text-cyan-400" />
+            <div
+              className={`p-2.5 rounded-2xl border ${
+                isOrganic
+                  ? 'bg-[#C97D5A]/15 border-[#C97D5A]/30 text-[#C97D5A]'
+                  : 'bg-cyan-500/10 border-cyan-400/30 shadow-neon-cyan text-cyan-400'
+              }`}
+            >
+              <FileText className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+              <span
+                className={`text-[10px] font-mono uppercase tracking-widest font-bold ${
+                  isOrganic ? 'text-[#C97D5A]' : 'text-cyan-400'
+                }`}
+              >
                 Custom Actuation Protocol
               </span>
-              <h3 className="font-display font-black text-xl text-white tracking-wide">
+              <h3
+                className={`font-display font-black text-xl tracking-wide ${
+                  isOrganic ? 'text-[#333333]' : 'text-white'
+                }`}
+              >
                 Custom Practice Mode
               </h3>
             </div>
@@ -129,81 +172,203 @@ export const CustomPracticeModal: React.FC = () => {
 
           <button
             onClick={() => setModal(null)}
-            className="p-2 rounded-xl bg-slate-900 border border-white/10 text-slate-400 hover:text-white transition-colors"
+            className={`p-2 rounded-xl transition-colors ${
+              isOrganic
+                ? 'bg-white border border-[#E5DFD7] text-[#616864] hover:text-[#333333] shadow-sm'
+                : 'bg-slate-900 border border-white/10 text-slate-400 hover:text-white'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Quick Presets Selection Bar */}
-        <div>
-          <label className="text-xs font-bold text-slate-400 mb-2 block uppercase tracking-wider font-mono">
-            Instant Presets (Click to Load)
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {PRESETS.map((p) => (
-              <button
-                key={p.title}
-                type="button"
-                onClick={() => handleApplyPreset(p)}
-                className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                  selectedTitle === p.title
-                    ? 'bg-cyan-500/20 border-cyan-400 shadow-neon-cyan text-cyan-300'
-                    : 'bg-slate-950/60 border-white/10 text-slate-300 hover:border-white/30 hover:bg-white/5'
-                }`}
-              >
-                <span className="text-lg">{p.icon}</span>
-                <span className="text-xs font-semibold truncate">{p.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Text Input Area */}
-        <div className="flex flex-col gap-2">
+        {/* HeroUI Fieldset Architecture */}
+        <Fieldset variant="card">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
-              Paste or Type Your Custom Text / Code
-            </label>
-            <span className="text-[11px] font-mono text-slate-400">
-              {wordCount} words • {charCount} chars
-            </span>
+            <Fieldset.Legend icon={<SlidersHorizontal className="w-4 h-4" />}>
+              Practice Configuration
+            </Fieldset.Legend>
+            <div className="flex items-center gap-1.5">
+              <Chip size="sm" variant="soft" color={isOrganic ? 'primary' : 'primary'}>
+                {wordCount} words
+              </Chip>
+              <Chip size="sm" variant="outline" color="default">
+                {charCount} chars
+              </Chip>
+            </div>
           </div>
+          <Fieldset.Description>
+            Select a verified algorithmic snippet, literary passage, or paste your custom code buffer.
+          </Fieldset.Description>
 
-          <textarea
-            value={customText}
-            onChange={(e) => {
-              setCustomText(e.target.value);
-              setSelectedTitle('Custom Session');
-            }}
-            rows={7}
-            placeholder="Paste your code syntax, literature paragraphs, or test prompts here..."
-            className="w-full bg-slate-950/90 border border-white/10 rounded-2xl p-4 text-sm font-mono text-cyan-300 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all resize-y leading-relaxed"
-          />
-        </div>
+          {/* Curated Preset Selector via HeroUI Dropdown */}
+          <Fieldset.Item label="Curated Preset Library">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Dropdown
+                selectionMode="single"
+                selectedKeys={[selectedTitle]}
+                onAction={(key) => {
+                  const found = PRESETS.find((p) => p.title === key);
+                  if (found) handleApplyPreset(found);
+                }}
+                className="w-full sm:w-80"
+              >
+                <Dropdown.Trigger className="w-full">
+                  <div
+                    className={`w-full px-4 py-2.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
+                      isOrganic
+                        ? 'bg-white border-[#E5DFD7] text-[#333333] hover:border-[#C97D5A]'
+                        : 'bg-slate-950/80 border-white/10 text-white hover:border-cyan-400/50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="text-base">
+                        {PRESETS.find((p) => p.title === selectedTitle)?.icon || '📝'}
+                      </span>
+                      <span className="font-semibold truncate">{selectedTitle}</span>
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+                  </div>
+                </Dropdown.Trigger>
+                <Dropdown.Popover placement="bottom-start" className="w-80">
+                  <Dropdown.Menu>
+                    <Dropdown.Section title="Code & Algorithms">
+                      {PRESETS.filter((p) => p.category === 'Code').map((p) => (
+                        <Dropdown.Item
+                          key={p.title}
+                          id={p.title}
+                          description={`${p.content.split('\n').length} lines • Code`}
+                          startContent={<span className="text-base">{p.icon}</span>}
+                        >
+                          {p.title}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Section>
+
+                    <Dropdown.Separator />
+
+                    <Dropdown.Section title="Literature & Design">
+                      {PRESETS.filter((p) => p.category === 'Literature').map((p) => (
+                        <Dropdown.Item
+                          key={p.title}
+                          id={p.title}
+                          description="Prose typography"
+                          startContent={<span className="text-base">{p.icon}</span>}
+                        >
+                          {p.title}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Section>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
+
+              {/* Quick Chip Pill Filters */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {PRESETS.slice(0, 3).map((p) => (
+                  <Chip
+                    key={p.title}
+                    size="sm"
+                    variant={selectedTitle === p.title ? 'solid' : 'soft'}
+                    color={
+                      selectedTitle === p.title
+                        ? isOrganic
+                          ? 'primary'
+                          : 'primary'
+                        : 'default'
+                    }
+                    onClick={() => handleApplyPreset(p)}
+                  >
+                    {p.title.split(' ')[0]}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </Fieldset.Item>
+
+          {/* Text Buffer Field */}
+          <Fieldset.Item
+            label="Source Code / Text Buffer"
+            description="Type or modify the text in the buffer below before commencing the session."
+          >
+            <textarea
+              value={customText}
+              onChange={(e) => {
+                setCustomText(e.target.value);
+                setSelectedTitle('Custom Buffer');
+              }}
+              rows={6}
+              placeholder="Paste custom text or syntax..."
+              className={`w-full rounded-2xl p-4 text-xs font-mono transition-all resize-y leading-relaxed focus:outline-none ${
+                isOrganic
+                  ? 'bg-white border border-[#E5DFD7] text-[#333333] placeholder-[#B8C0BF] focus:border-[#C97D5A] focus:ring-1 focus:ring-[#C97D5A]'
+                  : 'bg-slate-950/90 border border-white/10 text-cyan-300 placeholder-slate-600 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400'
+              }`}
+            />
+          </Fieldset.Item>
+
+          {/* Session Length Gauge */}
+          <div className="pt-1">
+            <ProgressBar
+              label="Estimated Session Scope"
+              value={Math.min(100, Math.round((wordCount / 150) * 100))}
+              minValue={0}
+              maxValue={100}
+              size="sm"
+              color={wordCount > 150 ? 'warning' : 'success'}
+              showValueLabel
+              valueLabel={`~${estimatedSeconds}s pacing (${wordCount} words)`}
+            />
+          </div>
+        </Fieldset>
 
         {/* Telemetry Summary & Launch Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-white/10">
-          <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+        <div
+          className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t ${
+            isOrganic ? 'border-[#E5DFD7]' : 'border-white/10'
+          }`}
+        >
+          <div
+            className={`flex items-center gap-4 text-xs font-mono ${
+              isOrganic ? 'text-[#616864]' : 'text-slate-400'
+            }`}
+          >
             <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <span>Est. Time: ~{estimatedSeconds}s</span>
+              <Clock
+                className={`w-4 h-4 ${
+                  isOrganic ? 'text-[#C97D5A]' : 'text-cyan-400'
+                }`}
+              />
+              <span>
+                Est. Time: ~<NumberTicker value={estimatedSeconds} />s
+              </span>
             </div>
-            <div className="hidden sm:inline text-slate-600">•</div>
-            <div className="hidden sm:flex items-center gap-1 text-slate-400">
-              <span>Personal Pace: {user.best_wpm || 50} WPM</span>
+            <div
+              className={`hidden sm:inline ${
+                isOrganic ? 'text-[#B8C0BF]' : 'text-slate-600'
+              }`}
+            >
+              •
+            </div>
+            <div className="hidden sm:flex items-center gap-1">
+              <span>
+                Personal Pace: <NumberTicker value={user.best_wpm || 50} /> WPM
+              </span>
             </div>
           </div>
 
           <button
             onClick={handleStartSession}
             disabled={wordCount === 0}
-            className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-display font-black text-sm tracking-wide hover:shadow-neon-cyan transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none active:scale-95"
+            className={`w-full sm:w-auto px-8 py-3 rounded-2xl font-display font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none active:scale-95 ${
+              isOrganic
+                ? 'bg-[#C97D5A] hover:bg-[#b56d4c] text-white shadow-md'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-neon-cyan'
+            }`}
           >
             <Play className="w-4 h-4" /> Start Custom Session
           </button>
         </div>
-
       </motion.div>
     </div>
   );

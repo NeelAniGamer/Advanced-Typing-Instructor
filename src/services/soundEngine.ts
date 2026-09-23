@@ -207,6 +207,7 @@ class SoundEngine {
   }
 
   public previewSwitch(profile: SwitchProfile) {
+    if (this.muted) return;
     const prev = this.currentProfile;
     this.currentProfile = profile;
     this.playKey(false);
@@ -224,19 +225,20 @@ class SoundEngine {
     if (!dest) return;
 
     const t = this.ctx.currentTime;
+    // Gentle, low-gain wooden tap (no harsh grating sawtooth buzzing)
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(140, t);
-    osc.frequency.linearRampToValueAtTime(85, t + 0.08);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.04);
 
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
 
     osc.connect(gain);
     gain.connect(dest);
     osc.start(t);
-    osc.stop(t + 0.09);
+    osc.stop(t + 0.05);
   }
 
   public playCombo() {
@@ -260,6 +262,31 @@ class SoundEngine {
       gain.connect(dest);
       osc.start(t + idx * 0.03);
       osc.stop(t + 0.3 + idx * 0.03);
+    });
+  }
+
+  public playHyperdrive() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    // Ascending sci-fi power-up arpeggio
+    const arpeggio = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+    arpeggio.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.04);
+      gain.gain.setValueAtTime(0.12, t + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3 + idx * 0.04);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.04);
+      osc.stop(t + 0.35 + idx * 0.04);
     });
   }
 
@@ -308,6 +335,156 @@ class SoundEngine {
     gain.connect(dest);
     osc.start(t);
     osc.stop(t + 0.13);
+  }
+
+  public playGemPickup(isSpecial: boolean = false) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    const freq = isSpecial ? 1318.51 : 987.77;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.35, t + 0.07);
+
+    gain.gain.setValueAtTime(0.035, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+
+  public playComboChime(tier: number = 1) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    // Pentatonic scale chords for sweet, non-fatiguing feedback
+    const notesByTier: Record<number, number[]> = {
+      1: [523.25, 659.25], // C5, E5
+      2: [523.25, 659.25, 783.99], // C5, E5, G5
+      3: [523.25, 659.25, 783.99, 987.77], // C5, E5, G5, B5
+      4: [523.25, 783.99, 1046.50, 1318.51], // C5, G5, C6, E6
+    };
+    const notes = notesByTier[tier] || notesByTier[1];
+
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.045);
+      gain.gain.setValueAtTime(0.08, t + idx * 0.045);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28 + idx * 0.045);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.045);
+      osc.stop(t + 0.3 + idx * 0.045);
+    });
+  }
+
+  public playChestOpen() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98]; // G major celestial harp
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.05);
+      gain.gain.setValueAtTime(0.12, t + idx * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5 + idx * 0.05);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.05);
+      osc.stop(t + 0.55 + idx * 0.05);
+    });
+  }
+
+  public playDuelWin() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [349.23, 440.00, 523.25, 698.46]; // F major victory fanfare
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+      gain.gain.setValueAtTime(0.15, t + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45 + idx * 0.08);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + 0.5 + idx * 0.08);
+    });
+  }
+
+  public playDuelLoss() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [587.33, 466.16, 392.00]; // D, Bb, G minor descent
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.12);
+      gain.gain.setValueAtTime(0.1, t + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35 + idx * 0.12);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(t + idx * 0.12);
+      osc.stop(t + 0.4 + idx * 0.12);
+    });
+  }
+
+  public playSuddenDeathFail() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const dest = this.getDestination();
+    if (!dest) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.22);
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.25);
   }
 }
 

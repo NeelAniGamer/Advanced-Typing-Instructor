@@ -1,7 +1,7 @@
 {
   "name": "advanced-typing-instructor",
   "private": true,
-  "version": "2.5.0",
+  "version": "3.2.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-use-measure": "^2.1.7",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.1"
   },

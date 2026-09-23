@@ -1,0 +1,14 @@
+{
+  "version": "3.2.1",
+  "versionCode": 321,
+  "releaseDate": "2026-09-21",
+  "downloadUrl": "https://github.com/NeelAniGamer/Vercel/releases/download/Projects/AdvancedTypingInstructor_Setup.exe",
+  "exeUrl": "https://advancedlogiclabs.dpdns.org/AdvancedTypingInstructor.exe",
+  "sha256": "E70A20BC0EAB3F9E20C6316AEA24EAEB87C8EBD7F000175B5B75BE10345952D0",
+  "setupSha256": "7A791FC593A8F9C91639E45E0F60B08A645E6836ACBB126562192D9CC561F642",
+  "fileSize": 191406762,
+  "setupSize": 183248121,
+  "changelog": "v3.2.1: Custom TitleBar with native Windows Aero Snap (top maximize, side split) and Taskbar protection; Unified Touch Typing Practice header; Renamed Campaign to Level Select & Level Progress; 100% Real English dictionary words strictly adhering to level word limits (20 down to 5); Organic Dark theme polish across HUD and popovers; Full Inno Setup installer.",
+  "mandatory": false,
+  "minRequiredVersion": "1.0.0"
+}
